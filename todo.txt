@@ -1,0 +1,2 @@
+* Find out what joined.csv is about, and how we can generalize it. Change it's name to something more readable.
+* Change function in 01_prepare_dem read_joind_csv to something more readable

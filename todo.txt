@@ -1,2 +1,26 @@
 * Find out what joined.csv is about, and how we can generalize it. Change it's name to something more readable.
 * Change function in 01_prepare_dem read_joind_csv to something more readable
+
+
+* Here is the idea: I have a directory for inputs, and in this I have a bunch of R files which store configurations
+
+* Next, I have an output directory. In this, I have a directories named after the input keys.
+* Inside each directory, I have the output steps. each output step has it's own file.
+* Everytime an input key is run, if it doesn't find a corresponding output directory, it should create it.
+
+* After creating the corresponding output directory using the key's name, it should come with the directory 01 in it.
+* It should also create the main driver script for the folder.
+* It should also create the step script, functions, and Output folder.
+
+The driver.R file should take in input of the key , and then the step name
+This will create the necessary next steps for the key
+
+if i type in Rscript driver.R key_name, it should do the following steps:
+
+it gets the output path from 
+work_dir_path + output
+creates a folder called key_name. if the folder already exists, it should display an error and exit
+
+in this, it creates directories named after all the steps, which can be found in constants.R
+
+next, it reads a separate file in each directory, and places it in 

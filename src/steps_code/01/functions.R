@@ -30,16 +30,16 @@
     }
 
 
-initial_to_UTM <- function(x,y, crs_of_landsat){
-  cbind(x,y)
-  coord = as.data.frame(cbind(x, y), nrow = 1)
-  names(coord) = c("long", "lat")
-  cord.dec = SpatialPoints(cbind(coord$long, coord$lat), proj4string=CRS("+proj=longlat"))
-  
-  cord.UTM <- spTransform(cord.dec, crs_of_landsat)
-  initial.coord=as.data.frame(cord.UTM) 
-  
-  #initial.coord = abs(initial.coord)
-  initial.coord = as.vector(t(initial.coord))
-  return(initial.coord)
-}
+    initial_to_UTM <- function(x,y, crs_of_landsat){
+    cbind(x,y)
+    coord = as.data.frame(cbind(x, y), nrow = 1)
+    names(coord) = c("long", "lat")
+    cord.dec = SpatialPoints(cbind(coord$long, coord$lat), proj4string=CRS("+proj=longlat"))
+    
+    cord.UTM <- spTransform(cord.dec, crs_of_landsat)
+    initial.coord=as.data.frame(cord.UTM) 
+    
+    #initial.coord = abs(initial.coord)
+    initial.coord = as.vector(t(initial.coord))
+    return(initial.coord)
+    }

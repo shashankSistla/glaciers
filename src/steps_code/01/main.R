@@ -42,7 +42,7 @@ print(step_dir)
 
 source(paste0(root_dir,"/config.R"))
 source(paste0(root_dir, step_dir, "glacier_list.R"))
-source(paste0(root_dir, "/src/steps_code/01/01_functions.R"))
+source(paste0(root_dir, step_dir, "functions.R"))
 source(paste0(root_dir, "/src/base_functions.R"))
 
 
@@ -106,9 +106,6 @@ for(glacier in glacier_list){
     
     writeRaster(dem, filename=output_path, format="GTiff", overwrite=TRUE)
     # Above 3 lines most likely for the next step
-
-
-    
 }
 
 

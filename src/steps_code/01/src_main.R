@@ -1,59 +1,22 @@
-## Config file should read joined.csv
+main.function_01 <- function(key, root_dir){
+step_name = "01_prepare_dem"
 
-## Load necessary functions
-
-## Read glaciers.txt
-
-## For loop through all glaciers
-## get corresponding x and y
-
-## Handle img_coord_rangge_logic
-
-## Get mode
-
-## Read the DEM file
-
-## if DEM is zero for some reason, fallback to default tif file
-
-## Project dem to same CRS as Landsat image
-
-## write the DEM to disk for next step to read
-
-## Add logging
-
+#TODO make a nice readFile function which throws good errors when trying to read a file
 library(rprojroot)
 library(sp)
 library(terra)
 library(raster)
-
-
-
-root_criterion <- has_file("Glaciers.Rproj")
-root_dir <- find_root(root_criterion)
-step_dir <- "/steps/01_prepare_dem/"
-step_2_dir <- "/steps/02_prepeare"
-
-
-
-joined_csv_path <- paste0(root_dir, "/bin/joined.csv")
-
 print(root_dir)
-print(step_dir)
 
 source(paste0(root_dir,"/config.R"))
-source(paste0(root_dir, step_dir, "glacier_list.R"))
-source(paste0(root_dir, "/src/steps_code/01/01_functions.R"))
+source(paste0(root_dir, "/src/steps_code/01/functions.R"))
 source(paste0(root_dir, "/src/base_functions.R"))
+source(paste0(root_dir, "/output/",key,"/01_prepare_dem/glacier_list.R"))
 
-
-args <- commandArgs(trailingOnly = TRUE)
-key = parse_key(args)
 
 dem_dir_path = config$dem_dir_path
 landsat_images_dir_path = config$landsat_images_dir_path
 work_dir_path = config$work_dir_path
-
-joined <- read.csv(joined_csv_path, header = T)
 
 glaciers_start_coords = get_joined_file()
 
@@ -89,10 +52,10 @@ for(glacier in glacier_list){
         print(dem_dir_path)
     dem_path = paste0(dem_dir_path, "/", glacier, "_NASADEM.tif")
     print(dem_path)
-   dem = readDEM(dem_path)
+    dem = readDEM(dem_path)
 
-    x = joined[which(joined$glac_id == glacier),]$x
-    y = joined[which(joined$glac_id == glacier),]$y
+    x = glaciers_start_coords[which(glaciers_start_coords$glac_id == glacier),]$x
+    y = glaciers_start_coords[which(glaciers_start_coords$glac_id == glacier),]$y
 
     initial.coord=initial_to_UTM(x,y, crs(landsatImage))
 
@@ -100,17 +63,37 @@ for(glacier in glacier_list){
     dem.extent = extent(dem)
     print(class(dem))
 
-    create_directory(output_path, key)
+    #TODO make output_dir logic neater
+    output_dir = paste0(work_dir_path, "/output/",key,"/",step_name)
+    create_directory(output_dir, "output")
 
-    output_path = paste0(work_dir_path, "/output/",key, )
+    raster_filename = paste0(output_dir,"/output/", glacier,"_dem")
+    initial_coord_filename = paste0(output_dir,"/output/", glacier, "_initial_coord.rds")
     
-    writeRaster(dem, filename=output_path, format="GTiff", overwrite=TRUE)
-    # Above 3 lines most likely for the next step
+    print("Raster filename is")
+    print(raster_filename)
+
+    print("Initial co-ord filename is")
+    print(initial_coord_filename)
 
 
+    writeRaster(dem, filename=raster_filename, format="GTiff", overwrite=TRUE)
+    saveRDS(initial.coord, file = initial_coord_filename)
     
+
+        #COME BACK TO THIS
+    # if(initial.coord[1] < extent(dem)[1] | initial.coord[1] > extent(dem)[2]){
+    #   
+    # }
+    # 
+    #If the DEM is all zero because it is above 60 degrees latitude it uses the GMTED DSM from the google drive folders
+    # if(all(as.matrix(!is.na(dem)) == 0)){
+    #   if((file.exists("USGS_GMTED2010.tif"))){
+    #     dem = readDEM("USGS_GMTED2010.tif")
+    #   }else{next}
+    # }
 }
 
-
+}
 
 

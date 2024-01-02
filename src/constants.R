@@ -1,1 +1,1 @@
-step_names <- list("01_prepare_dem", "02_demo_step", "03_demo_step")
+step_names <- list("01_prepare_dem", "02_GD_flowline", "03_process_landsat", "04_terminus")

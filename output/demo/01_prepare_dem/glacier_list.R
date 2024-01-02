@@ -1,4 +1,4 @@
-glacier_list_all = c(
+glacier_list = c(
     "G007276E45599N",
     "G010748E46850N"
 )

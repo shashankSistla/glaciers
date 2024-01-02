@@ -1,12 +1,13 @@
 main.function_03 <- function(key, root_dir){
 
-install.packages("~/velox_0.2.0.tar.gz", repos = NULL, type = "source")
+#install.packages("~/velox_0.2.0.tar.gz", repos = NULL, type = "source")
 step_name = "03_process_landsat"
 
 source(paste0(root_dir,"/config.R"))
 source(paste0(root_dir, "/output/",key,"/03_process_landsat/glacier_list.R"))
 source(paste0(root_dir, "/src/steps_code/03/functions.R"))
 source(paste0(root_dir, "/src/base_functions.R"))
+source(paste0(root_dir, "/input/", key,".R"))
 
 library(devtools)
 library(velox)
@@ -17,6 +18,9 @@ landsat_images_dir_path = config$landsat_images_dir_path
 
 step_01_output_dir = paste0(root_dir, "/output/", key, "/01_prepare_dem/output/")
 step_02_output_dir = paste0(root_dir, "/output/", key, "/02_GD_flowline/output/")
+
+max_percent_missing = params$step_3$max_percent_missing
+max_percent_na = params$step_3$max_percent_na
 
 output_dir = paste0(work_dir_path, "/output/",key,"/",step_name)
 create_directory(output_dir, "output")
@@ -89,7 +93,7 @@ for(glacier in glacier_list){
     }
 
     #Remove dates that have too much missingness (>50%)
-    pmissing = 0.50
+    pmissing = max_percent_missing
     indices = c()
     j = 0
     for(i in 1:nrow(ts_int)){
@@ -145,7 +149,7 @@ for(glacier in glacier_list){
       dates_cut = dates_cut[-(outliers)]
       edited_landsat <-edited_landsat$landsatImgs[-outliers]
     }
-    print("big chunk")
+
     # write.csv(indices_to_remove, paste0(path,"Processed/",glacier, "_filteredimages.csv"))
     # write.csv(outliers, paste0(path,"Processed/",glacier, "_outlierimages.csv"))
     if(length(dates_cut) == 0){

@@ -5,26 +5,6 @@ get_FV_joined_file <- function() {
     return(FV)
 }
 
-arclength <- function(path, dem){
-  xmin = extent(dem)@xmin
-  xmax = extent(dem)@xmax
-  ymin = extent(dem)@ymin
-  ymax = extent(dem)@ymax
-  
-  
-  distances = c()
-  #Already in meters
-  distances = pointDistance(path, lonlat = FALSE, allpairs = T)
-  distance = numeric()
-  for(i in 1:(nrow(distances)-1)){
-    distance[i] = distances[i, (i+1)]
-  }
- 
-  arclength=c(0, cumsum(distance))
-  
-  return(arclength)
-}
-
 terminus <- function(glacier, obs, ss, tt, meas= NULL, plot = FALSE, direc = NULL, linefit = 1, temporal = 1,invert = 1, distPerYear, knotbuffer = 1){
   # tSmooth <- temporal_smooth_mat(obs, tt, knotT = min(round(length(tt)/4)+4, 35+4))$est
   knotbuffer = min(4, knotbuffer) # this is set to be 4 at maximum because the knots may be too little when setting spacing too large
@@ -38,28 +18,13 @@ terminus <- function(glacier, obs, ss, tt, meas= NULL, plot = FALSE, direc = NUL
   #source("~/Glaciers 2/DataForShashank/terminus_est.R")
   term_path = terminus_paths(sSmooth$dd1,tt,ss,glacier,invert=invert,distPerYear)
 #----------------------------------------------------------------------------
+  outs <- list()
   if (temporal == 1) {
     # out1 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[1]], knotsT =round(length(tt)/30),meas
-    out1 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[1]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out2 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[2]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out3 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[3]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out4 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[4]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out5 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[5]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out6 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[6]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out7 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[7]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out8 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[8]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out9 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[9]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out10 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[10]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out11 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[11]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out12 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[12]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out13 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[13]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out14 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[14]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out15 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[15]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out16 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[16]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out17 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[17]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out18 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[18]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out19 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[19]], knotsT =round(diff(range(tt))/knotbuffer),meas)
-    out20 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[20]], knotsT =round(diff(range(tt))/knotbuffer),meas)
+     for(i in 1:20){
+    outs[[paste0("out", i)]] <- temporal_smooth(ss, tt, est = sSmooth$est, dd3 = sSmooth$dd3, term_path = term_path[[i]], knotsT = round(diff(range(tt))/knotbuffer), meas)
+  }
+  out1 = outs[[1]]
     
     }else if (temporal ==2){# here!
     list1 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[1]], knotsT =round(length(tt)/4+2),meas)
@@ -162,6 +127,19 @@ terminus <- function(glacier, obs, ss, tt, meas= NULL, plot = FALSE, direc = NUL
   
   
   if(plot==1){
+    out1 = outs[[1]]
+    out2 = outs[[2]]
+    out3 = outs[[3]]
+    out4 = outs[[4]]
+    out5 = outs[[5]]
+
+    out11 = outs[[11]]
+    out12 = outs[[12]]
+    out13 = outs[[13]]
+    out14 = outs[[14]]
+    out15 = outs[[15]]
+
+
     bounds = terminus_plot(direc,glacier,ss,tt,obs,out1,out2, out3,out4,out5, out11, out12, out13, out14, out15, sSmooth,line.fit,meas = meas,measAdj = measAdj,temporal,line.fit,invert, knotbuffer = knotbuffer)
     #write.table(obs, file = paste(glacier, "unsmoothed intensity.txt"), row.names =FALSE, col.names =FALSE)
     #write.table(tt, file = paste(glacier, "year.txt"), row.names =FALSE ,col.names =FALSE)
@@ -173,8 +151,8 @@ terminus <- function(glacier, obs, ss, tt, meas= NULL, plot = FALSE, direc = NUL
 
   #Need to make sure the arclength now that it is in meters does not decrease because it is possible that flowline turns back slightly
   
-  list = list(line.fit = line.fit, pred = out1$pred, predSe = out1$predSe, slope = slope, slopeSe = slope.se, dd1 = sSmooth$dd1,
-              MIAE = MIAE, MAD = MAD, pred2 = out2$pred, pred3 = out3$pred, pred4 = out4$pred, pred5 = out5$pred, unsmooth = ss[term_path[[1]]]
+  list = list(line.fit = line.fit, pred = out1$pred, predSe = out1$predSe, slope = slope, slopeSe = slope.se, sSmooth = sSmooth,
+              MIAE = MIAE, MAD = MAD, outs = outs, unsmooth = ss[term_path[[1]]]
               , indice_path = term_path[[1]], pred.ks = out1$pred.ks, predSe.ks = out1$predSe.ks)
   return(list)
   
@@ -218,9 +196,7 @@ spatial_smooth <- function(obs, ss, knotS = min(round(length(ss)/4)+4, 35+4)){
     se2[,ii] <- ses
   }
   
-  saveRDS(dd2,
-          file = paste0(glacier, "dd2_output.rds"))
-  return (list(dd1 = t(dd1), dd3=t(dd3), est = t(est)))
+  return (list(dd1 = t(dd1), dd2 = t(dd2), dd3=t(dd3), est = t(est)))
 }
 
 terminus_paths <- function(dd1, yearTab, distanceTab, glacier, invert, distPerYear){
@@ -268,8 +244,8 @@ terminus_paths <- function(dd1, yearTab, distanceTab, glacier, invert, distPerYe
   candidate_paths[,11:20] <- flipud(candidate_paths[,11:20])
   out <- candidate_paths[,index]
   colnames(out) <- paste0("candidate ", index)
-  write.csv(out, paste0("~/",
-                        glacier, "_Path_index.csv"), row.names = FALSE)
+  # write.csv(out, paste0("~/",
+  #                       glacier, "_Path_index.csv"), row.names = FALSE)
 
   return(list(candidate_paths[,index[1]], 
               candidate_paths[,index[2]], 
@@ -387,3 +363,229 @@ pathCost <- function(dd1, path, flip){
   return(cost)
 }
 
+temporal_smooth <- function(ss,tt, est,dd3,term_path, knotsT =-1, meas){
+  #evaluate at path, time point k
+  muT = function( obj, term_path, k){ obj[k,term_path[k]]}
+  wts <- sapply( seq(1,nrow(dd3),1), muT, obj = dd3, term_path = term_path)
+  wts[wts < 0] = 1e-06
+  
+  if (length(unique(ss[term_path])) == 1) {
+    
+    b <- knots <- out <- pred <- predSe <- pred.ks <- predSe.ks <- predMeas <- predMeasSe <- NULL
+    pred <- ss[term_path]
+    predSe <- rep(NA, length(pred))
+    pred.ks <- rep(NA, length(pred))
+  } else {
+    b <- mgcv::gam(ss[term_path] ~ s(tt, bs = "cr", k = knotsT) , weights = wts, method = "REML")
+    knots <- b$smooth[[1]]$xp
+    out <- predict(b, se.fit = TRUE)
+    ### predicted path values
+    pred <- out$fit
+    predSe <- out$se.fit # Standard error is from smoothing step, se of the gam after getting the path
+    # TODO: use out$vc for the estimated covariance for the parameters
+    Xp <- predict(b, type="lpmatrix")
+    err <- list(lpmatrix = Xp,
+                Vp = b$Vp,
+                se = predict(b,se.fit = TRUE)$se.fit,
+                sp = b$sp,
+                coeffs = coef(b),
+                fit_1 = b
+                )
+    
+    # ksmooth instead of predictions
+    pred.ks <- ksmooth(tt, ss[term_path], bandwidth = 5, kernel = "normal", n.points = length(tt))$y
+    predSe.ks <- NULL
+    
+    ### predicted values over ground measurement times
+    ### This is used to match datetime between ground measurement and the image dates
+    if(!is.null(meas)) {
+      # newd = data.frame( tt = floor(min(tt, meas)):ceiling(max(tt,meas)))	#### need to update????
+      newd = data.frame(tt = meas[,1])
+      out <- predict( b, newd, se.fit = TRUE)
+      predMeas = out$fit
+      predMeasSe = out$se.fit # TODO: is this used anywhere for the later analyses?
+    }
+    else{
+      predMeas = NULL
+      predMeasSe = NULL
+    }
+  }
+  
+  
+  return(list(unsmooth = ss[term_path], pred = pred, predSe = predSe,
+              pred.ks = pred.ks, predSe.ks = predSe.ks,
+              predMeas = predMeas, predMeasSe = predMeasSe,
+              knots = knots, wts = wts
+               , err = err))
+
+}
+
+terminus_plot <- function(direc,glacier,ss,tt,obs,out1,out2, out3,out4, out5, out6, out7, out8, out9, out10, sSmooth,line.fit,meas,measAdj,temporal,linefit = 1,invert, knotbuffer = 1, newmethod = FALSE) {
+  col_B61<- colorRampPalette(c("tan4", "lightblue2"))
+  
+  write.csv(line.fit, paste(direc, glacier, "line_fit.csv", sep = ""))
+  #setwd(direc)
+  # plot 1 - profile intensity
+  main = paste(direc,glacier,"_ndsi_intensityprofile.png", sep = "")
+  png(main, width = 6.5, height = 6, units = 'in', res = 300)
+  matplot(ss, t(obs), col = "grey", type = "l", ylab = "Profile intensity", xlab = "Distance along the glacial flowline (meters)", cex.axis = 1.5, cex.lab = 1.5)
+  dev.off()
+
+  # plot 2 - first derivative
+  #Trying to fix this plot
+  dd1 = sSmooth$dd1
+  main = paste(direc,glacier,"_ndsi_firstderivativecandidate.png", sep = "")
+  png(main, width = 6.5, height = 6, units = 'in', res = 300)
+  par(oma=c( 0,1,0,0))
+  dmax = quantile(abs(dd1), .99)
+  dd1[which(dd1 > dmax)] = dmax
+  dd1[which(dd1 < -dmax)] = -dmax
+  #Need to make sure the arclength now that it is in meters does not decrease because it is possible that flowline turns back slightly
+  #Make sure fonts are the same size and that the labels match between intensity terminus
+  #plot and the derivative plot
+  library(grDevices)
+  cols = colorRampPalette(c(muted("blue"), "white", muted("red")))
+  col_pal = cols(64)
+  image.plot(tt, ss, dd1, zlim = c(-dmax, dmax), ylab = "Flowline arclength (meters)", xlab = "Year", col = col_pal)
+  
+  if(temporal ==  0){
+    lines(tt, out1$unsmooth, col = "black", lwd = 3.5)
+  }else if (temporal ==2){
+    lines(tt, out1$unsmooth,  col = "yellow", lwd = 3.5)
+    lines(tt,  out1$pred, col = "black", lwd = 3.5)
+    lines( tt, out1$pred + 2*out1$predSe, lwd = 1.5, col = "purple")
+    lines(  tt, out1$pred - 2*out1$predSe,lwd = 1.5, col = "purple")
+  }else{
+    lines(tt, out1$pred,  col = "black", lwd = 3.5)
+    #lines(tt,  out1$pred + 2*out1$predSe, lwd = 1.5, col = "purple")
+    #lines( tt, out1$pred - 2*out1$predSe, lwd = 1.5, col = "purple")
+  }
+  dev.off()
+  col_B61 <- colorRampPalette(c("tan4", "lightblue2"))( 500 )
+  
+  # plot 3 - estimate terminus
+  if(invert == 1){
+    col <- col_B61
+  }else {
+    col <- rev(col_B61)
+  }
+  #col = rev(col_B61)
+  main = paste(direc,glacier,"_ndsi_terminusestimatecandidate.png", sep = "")
+  png(main, width = 6.5, height = 6, units = 'in', res = 300)
+  par(oma=c( 0,1,0,0))
+  obsmat = as.matrix(obs)
+  omax = quantile(abs(obs), .99, na.rm = T)
+  omin = quantile(abs(obs), .01, na.rm = T)
+  obs[which(obs > omax)] = omax
+  obs[which(obs < omin)] = omin
+  image.plot(tt, ss, obs, zlim = c(omin, omax), xlab = "Year", ylab = "Flowline arclength (meters)", cex.axis = 1.5, cex.lab = 1.5, col = col)
+  if(temporal ==  0){
+    lines( out1$unsmooth, tt, col = "yellow", lwd = 3.5)
+  }else if (temporal ==2){
+    lines( out1$unsmooth, tt, col = "yellow", lwd = 3.5)
+    lines( out1$pred, tt, col = "black", lwd = 3.5)
+    lines( out1$pred + 2*out1$predSe,tt, lwd = 1.5 , col = "purple")
+    lines( out1$pred  - 2*out1$predSe,tt, lwd = 1.5, col = "purple")
+  }else{
+    lines(tt,  out1$pred, col = "yellow", lwd = 3.5)
+    #lines( tt,out1$pred + 2*out1$predSe, lwd = 1.5 , col = "purple")
+    #lines( tt, out1$pred  - 2*out1$predSe,lwd = 1.5, col = "purple")
+  }
+  #if(linefit == 1){
+  lines(tt, line.fit, lwd = 2, col = "green")
+  #}
+  if(!is.null(meas)){
+    points(as.numeric(measAdj[,1]), measAdj[,2],pch = 16, col = "red")
+  }
+  dev.off()
+  #Derivative plot with 3 paths 
+  #Trying to fix this plot
+  dd1 = sSmooth$dd1
+  main = paste(direc,glacier,"_ndsi_fivepathcandidates.png", sep = "")
+  png(main, width = 6.5, height = 6, units = 'in', res = 300)
+  par(oma=c( 0,1,0,0))
+  dmax = quantile(abs(dd1), .99)
+  dd1[which(dd1 > dmax)] = dmax
+  dd1[which(dd1 < -dmax)] = -dmax
+  #Need to make sure the arclength now that it is in meters does not decrease because it is possible that flowline turns back slightly
+  
+  image.plot( tt,ss, dd1, zlim = c(-dmax, dmax), ylab = "Flowline arclength (meters)", xlab = "Year")
+  
+  if(temporal ==  0){
+    lines(tt, out1$unsmooth,  col = "black", lwd = 3.5)
+  }else if (temporal ==2){
+    lines(tt, out1$unsmooth,  col = "purple", lwd = 3.5)
+    lines(  tt, out1$pred,col = "black", lwd = 3.5)
+    lines(  tt, out1$pred + 2*out1$predSe,lwd = 1.5, col = "purple")
+    lines( tt, out1$pred - 2*out1$predSe, lwd = 1.5, col = "purple")
+  }else{
+    #lines(  tt,out1$pred + 2*out1$predSe, lwd = 1.5, col = "purple")
+    #lines(  tt,out1$pred - 2*out1$predSe, lwd = 1.5, col = "purple")
+    
+    lines(  tt,out2$pred, col = "grey", lwd = 3.5)
+    #lines(  tt, out2$pred + 2*out2$predSe,lwd = 1.5, col = "black")
+    #lines(  tt, out2$pred - 2*out2$predSe,lwd = 1.5, col = "black")
+    
+    
+    lines( tt, out3$pred, col = "white", lwd = 3.5)
+    #lines(  tt,out3$pred + 2*out3$predSe, lwd = 1.5, col = "black")
+    #lines(  tt,out3$pred - 2*out3$predSe, lwd = 1.5, col = "black")
+    
+    lines( tt, out4$pred, col = "white", lwd = 1)
+    #lines(  tt,out4$pred + 2*out4$predSe, lwd = 1.5, col = "black")
+    #lines(  tt,out4$pred - 2*out4$predSe, lwd = 1.5, col = "black")
+    
+    lines( tt, out5$pred, col = "white", lwd = 1)
+    #lines(  tt,out5$pred + 2*out5$predSe, lwd = 1.5, col = "black")
+    #lines(  tt,out5$pred - 2*out5$predSe, lwd = 1.5, col = "black")
+    
+    lines(  tt,out6$pred, col = "white", lwd = 1)
+    lines(  tt,out7$pred, col = "white", lwd = 1)
+    lines(  tt,out8$pred, col = "white", lwd = 1)
+    lines(  tt,out9$pred, col = "white", lwd = 1)
+    lines(  tt,out10$pred, col = "white", lwd = 1)
+    
+    lines(tt,  out1$pred, col = "black", lwd = 3.5)
+    
+  }
+  dev.off()
+  col_B61 <- colorRampPalette(c("tan4", "lightblue2"))( 500 )
+  
+  # # plot 4 - zoomed estimate terminus
+  # range = range(out1$unsmooth)
+  # lower = range[1] - 3*(range[2]-range[1])
+  # lower = max(lower,min(ss))
+  # upper = range[2] + 3*(range[2]-range[1])
+  # upper = min(upper, max(ss))
+  # 
+  # main = paste(glacier,"terminus estimate zoomed candidate")
+  # png(paste(main,'.png', sep =""), width = 6.5, height = 6, units = 'in', res = 300)
+  # par(oma=c( 0,1,0,0))
+  # obsmat = as.matrix(obs)
+  # omax = quantile(abs(obsmat), .99,na.rm = T)
+  # omin = quantile(abs(obsmat), .01,na.rm = T)
+  # obsmat[which(obsmat > omax)] = omax
+  # obsmat[which(obsmat < omin)] = omin
+  # image.plot( ss, tt, obsmat,  col = col, xlim = c(lower, upper), ylim = c(min(tt), max(tt)), zlim = c(omin, omax), xlab = "Distance along the glacial flowline (meters)", ylab = "Year", cex.axis = 1.5, cex.lab = 1.5)
+  # if(temporal ==  0){
+  #   lines( out1$unsmooth, tt, col = "yellow", lwd = 3.5)
+  # }else if(temporal ==2){
+  #   lines( out1$unsmooth, tt, col = "yellow", lwd = 3.5)
+  #   lines( out1$pred, tt, col = "black", lwd = 3.5)
+  #   lines( out1$pred + 2*out1$predSe,tt, lwd = 1.5 , col = "purple")
+  #   lines( out1$pred  - 2*out1$predSe,tt, lwd = 1.5, col = "purple")
+  # }else{
+  #   lines( out1$pred, tt, col = "yellow", lwd = 3.5)
+  #   lines( out1$pred + 2*out1$predSe,tt, lwd = 1.5 , col = "purple")
+  #   lines( out1$pred  - 2*out1$predSe,tt, lwd = 1.5, col = "purple")
+  # }
+  # if( linefit == 1){
+  #   lines( line.fit, lwd = 2, tt, col = "green")
+  # }
+  # if(!is.null(meas)){
+  #   points( measAdj[,2], measAdj[,1], lwd = 3, col = "red")
+  # }
+  # dev.off()
+  # list(lower = unname(omin), upper = unname(omax))
+
+}

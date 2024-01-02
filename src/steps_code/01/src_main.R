@@ -45,13 +45,11 @@ for(glacier in glacier_list){
 
     mode_coord_imgs <- raw_image_extents[raw_image_extents[,"xmin"] == as.double(calculate_mode(raw_image_extents[,"xmin"])),] 
     sampled_img <- mode_coord_imgs[sample(rownames(mode_coord_imgs),1),]
-    print(sampled_img)
-    print("I come here")
+
     landsatImage <- stack(paste0(glacier_landsat_images_dir, "/", sampled_img$filename))
-        print("hi")
-        print(dem_dir_path)
+
     dem_path = paste0(dem_dir_path, "/", glacier, "_NASADEM.tif")
-    print(dem_path)
+
     dem = readDEM(dem_path)
 
     x = glaciers_start_coords[which(glaciers_start_coords$glac_id == glacier),]$x

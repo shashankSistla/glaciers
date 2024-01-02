@@ -1,2 +1,6 @@
 * Clean code in steps 2,3,4 (consult changes with Xinran, get rid of unecessary code, comments)
 * Add descriptions to every function used in all steps
+* make it so that output dir is created only if input file exists and is valid
+* Add logging
+* Add warnings logging (consult Xinran for this)
+* Check the DEM data on GEE (above 60 degrees issue)

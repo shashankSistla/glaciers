@@ -11,6 +11,7 @@ source(paste0(root_dir, "/output/",key,"/02_GD_flowline/glacier_list.R"))
 source(paste0(root_dir, "/src/steps_code/02/functions.R"))
 source(paste0(root_dir, "/src/base_functions.R"))
 
+
 work_dir_path = config$work_dir_path
 
 step_01_output_dir = paste0(root_dir, "/output/", key, "/01_prepare_dem/output/")

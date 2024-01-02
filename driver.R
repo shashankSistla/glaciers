@@ -48,6 +48,11 @@ for (step in steps) {
     output_script_path <- paste0(root_dir, "/output/", key_name,"/", step, "/glacier_list.R")
     script_content <- readLines(input_script_path)
     writeLines(script_content, output_script_path)
+
+    input_script_path <- paste0(root_dir, "/input/00input_template.R")
+    output_script_path <- paste0(root_dir, "/input/", key_name,".R")
+    script_content <- readLines(input_script_path)
+    writeLines(script_content, output_script_path)
     #print(file_name)
     # Add code here to read the file
     #TODO add glacier_list to config

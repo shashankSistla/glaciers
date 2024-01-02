@@ -224,3 +224,23 @@ decimaldate <- function(date){
  
   return(decimal.date)
 }
+
+arclength <- function(path, dem){
+  xmin = extent(dem)@xmin
+  xmax = extent(dem)@xmax
+  ymin = extent(dem)@ymin
+  ymax = extent(dem)@ymax
+  
+  
+  distances = c()
+  #Already in meters
+  distances = pointDistance(path, lonlat = FALSE, allpairs = T)
+  distance = numeric()
+  for(i in 1:(nrow(distances)-1)){
+    distance[i] = distances[i, (i+1)]
+  }
+ 
+  arclength=c(0, cumsum(distance))
+  
+  return(arclength)
+}

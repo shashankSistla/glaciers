@@ -4,3 +4,28 @@
 * Add logging
 * Add warnings logging (consult Xinran for this)
 * Check the DEM data on GEE (above 60 degrees issue)
+* Implement glacier list main
+* Add number of glaciers (forwards and backwards) as a parameter
+* Look into why line.fit is being used
+* MAD and other results
+* Make a nice readFile function which throws good errors when trying to read a file
+
+
+
+step 1 - prepare dem
+step 2 - GD flowline
+step 3 - extract intensity profiles
+step 4 - candidate termini paths (remove statistics, add it to a step 6)
+step 5 - termini path clustering
+step 6 - analysis (comparison with ground readings and possibly other outputs)
+
+
+
+djkstra
+smoothing
+clustering
+
+there may be multiple time series
+
+thursday 8 AM PST
+

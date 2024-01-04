@@ -9,13 +9,12 @@ parse_key <- function(args) {
 
     work_dir_path = config$work_dir_path
     keys_dir_path = paste0(work_dir_path, "input")
-    print(keys_dir_path)
     file_list_raw <- list.files(path = keys_dir_path, pattern = "\\.R$")
     file_list <- sub("\\.R$", "", file_list_raw)
-    print(file_list)
     if (!args %in% file_list) {
-        stop("Key isn't present in inputs", call. = FALSE)
+        stop("Key isn't present in keys directory. Create one to get started", call. = FALSE)
     }
+    # TODO, check if all inputs are present in key
 
     return(args)
 }
@@ -30,8 +29,30 @@ create_directory <- function(base_path, new_dir_name) {
   }
 }
 
+sapply_with_progress <- function(X, FUN, ..., simplify = TRUE, USE.NAMES = TRUE) {
+
+  pb <- txtProgressBar(min = 0, max = length(X), style = 3)
+  results <- vector("list", length(X))
+  
+  for(i in seq_along(X)) {
+    results[[i]] <- FUN(X[[i]], ...)
+    setTxtProgressBar(pb, i)
+  }
+  
+  close(pb)
+  
+  if(simplify && all(sapply(results, is.atomic))) {
+    results <- simplify2array(results, higher = FALSE)
+  }
+
+    if(USE.NAMES && is.character(X) && is.null(names(results))){
+	    colnames(results) <- X
+    }
+  return(results)
+}
 
 
-setup_output_directory <- function(key) {
-    
+progress <- function(glacier_count){
+    print(paste0("Currently processing ",glacier,". ",glacier_count," out of ", length(glacier_list)))
+    return(glacier_count + 1)
 }

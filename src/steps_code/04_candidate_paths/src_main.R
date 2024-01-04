@@ -1,4 +1,4 @@
-main.function_04 <- function(key, root_dir){
+main.function_04_candidate_paths <- function(key, root_dir){
 
 step_name = "04_candidate_paths"
 

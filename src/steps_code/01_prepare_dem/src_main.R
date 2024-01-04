@@ -1,4 +1,4 @@
-main.function_01 <- function(key, root_dir){
+main.function_01_prepare_dem <- function(key, root_dir){
 
     # STEP NAME
     step_name = "01_prepare_dem"
@@ -11,7 +11,7 @@ main.function_01 <- function(key, root_dir){
 
     # SOURCE
     source(paste0(root_dir,"/config.R"))
-    source(paste0(root_dir, "/src/steps_code/01/functions.R"))
+    source(paste0(root_dir, "/src/steps_code/01_prepare_dem/functions.R"))
     source(paste0(root_dir, "/src/base_functions.R"))
     source(paste0(root_dir, "/output/",key,"/01_prepare_dem/glacier_list.R"))
 
@@ -27,7 +27,7 @@ main.function_01 <- function(key, root_dir){
     for(glacier in glacier_list){
 
         #Logging progress
-        progress(glacier_count)
+        glacier_count = progress(glacier, glacier_count)
 
         # Select current glacier's directory
         glacier_landsat_images_dir = paste0(landsat_images_dir_path, "/", glacier,"/")

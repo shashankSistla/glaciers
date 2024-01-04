@@ -10,7 +10,7 @@ source(paste0(root_dir,"/config.R"))
 source(paste0(root_dir, "/src/base_functions.R"))
 source(paste0(root_dir, "/src/constants.R"))
 
-key = parse_key(args)
+key_name = parse_key(args)
 
 
 work_dir_path = config$work_dir_path

@@ -1,5 +1,4 @@
 landsatRead <- function(filenames){
-  library(rgdal)
   library(raster)
   landsatImgs = list()
   k = 1
@@ -153,7 +152,7 @@ getweightedIP <- function(dem, computedWeights, coord.parallel, band){
     print("NAs")
     return()
   }
-  print("NOT NAs")
+  #print("NOT NAs")
   valuesIntensity = apply(weight*intensity_list,1, sum, na.rm = T)/apply(weight*ind,1,sum, na.rm = T)
   #print(valuesIntensity)
   pmissing = 0.10

@@ -1,4 +1,4 @@
-main.function_02 <- function(key, root_dir){
+main.function_02_GD_flowline <- function(key, root_dir){
 
     # STEP NAME    
     step_name = "02_GD_flowline"
@@ -12,7 +12,7 @@ main.function_02 <- function(key, root_dir){
     # SOURCE
     source(paste0(root_dir,"/config.R"))
     source(paste0(root_dir, "/output/",key,"/02_GD_flowline/glacier_list.R"))
-    source(paste0(root_dir, "/src/steps_code/02/functions.R"))
+    source(paste0(root_dir, "/src/steps_code/02_GD_flowline/functions.R"))
     source(paste0(root_dir, "/src/base_functions.R"))
     source(paste0(root_dir, "/keys/", key,".R"))
 
@@ -24,13 +24,13 @@ main.function_02 <- function(key, root_dir){
 
     # LOAD NECESSARY FILES AND PARAMS
     glaciers_start_coords = get_joined_file()
-    plot_flowline = params$step_2$plot_flowline
+    should_plot_flowline  = params$step_2$should_plot_flowline 
 
     glacier_count = 1
     for(glacier in glacier_list){
 
         #Logging progress
-        progress(glacier_count)
+        glacier_count = progress(glacier, glacier_count)
 
         # Read DEM
         glacier_dem_path = paste0(step_01_output_dir, glacier,"_dem.tif")
@@ -72,11 +72,9 @@ main.function_02 <- function(key, root_dir){
         coord_parallel_filename = paste0(output_dir_path,"/output/", glacier,"_coord_parallel.rds")
         saveRDS(coord.parallel, file = coord_parallel_filename)
 
-        if(plot_flowline){
-            flowline_plot_filename = paste0(output_dir, "/output/",glacier,"_flowline_dem.png")
-            png(flowline_plot_filename)
-            plot_flowline(initial.coord, coord.parallel)
-            dev.off()
+        if(should_plot_flowline ){
+            flowline_plot_filename = paste0(output_dir_path, "/output/",glacier,"_flowline_dem.png")
+            plot_dem(glacier, dem, initial.coord, coord.parallel, flowline_plot_filename)
         }
     }
 }

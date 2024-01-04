@@ -1,4 +1,4 @@
-main.function_05 <- function(key, root_dir){
+main.function_05_clustering <- function(key, root_dir){
 
     step_name = "05_clustering"
 

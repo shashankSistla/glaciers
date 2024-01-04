@@ -30,13 +30,11 @@ GD.linear.sample <- function(dem, initial.coord,step.size = 5, sample = 0, diag 
     coord.unsmooth = coord.smooth = coord.ele = warning = NULL
     complete.list = c()
     for(j in 1:length(blocks)){
-      print(j)
       path = GD(dem, coord, blocks[j], step.size = step.size, nrow, ncol)
       #print("made through gd")
       coord.unsmooth[[j]] = path$coord
       #print(path$coord)
       coord.smooth[[j]] = path_smooth(path$coord, step.size = step.size*30, thin = 3)
-      print("path smooth")
       complete.list = c(complete.list, path$complete)
       warning = c(warning, path$warning)
     }
@@ -77,7 +75,7 @@ GD <- function(dem, initial.coord, block, step.size, nrow, ncol){
   step.size = step.size*30
   #ncol2 <- ncol(matrix2)
   maxiters <- round((x_high - x_low + y_high - y_low) / step.size)
-  print(maxiters)
+  # print(maxiters)
   coord.matrix <- matrix(initial.coord, nrow = 1)
   coord = initial.coord
   warning <- c()
@@ -216,9 +214,12 @@ path_smooth <- function(coord, step.size = 150, thin = 3){
     return(initial.coord)
     }
 
-    plot_flowline <- function(initial.coord, coord.parallel){
-        col_B61 <- colorRampPalette(c("tan4", "lightblue2"))
-        image(dem, col = col_B61(20))
-        lines(coord.parallel$x, coord.parallel$y,col = "red")
-        points(initial.coord[1], initial.coord[2], cex = 0.7,col = "black", pch = 16)
-    }
+plot_dem <- function(glacier, dem, initial.coord, coord.parallel, plot_path){
+  col_B61 <- colorRampPalette(c("tan4", "lightblue2"))
+  col <- col_B61
+  png(paste(plot_path, glacier, "_flowline_dem.png", sep=""))
+  image(dem, col = col_B61(20))
+  lines(coord.parallel$x, coord.parallel$y,col = "red")
+  points(initial.coord[1], initial.coord[2], cex = 0.7,col = "black", pch = 16)
+  dev.off()
+}

@@ -1,8 +1,8 @@
 ## Step 1: Prepare DEM
-#TODO Add step names to input
+
 
 ## Step 2: GD Flowline
-plot_flowline = TRUE
+should_plot_flowline  = TRUE
 step_2_params = list(plot_flowline = plot_flowline)
 
 ## Step 3: Extract intensity profiles along flowline

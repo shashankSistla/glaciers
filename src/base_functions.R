@@ -8,7 +8,7 @@ parse_key <- function(args) {
     }
 
     work_dir_path = config$work_dir_path
-    keys_dir_path = paste0(work_dir_path, "input")
+    keys_dir_path = paste0(work_dir_path, "keys")
     file_list_raw <- list.files(path = keys_dir_path, pattern = "\\.R$")
     file_list <- sub("\\.R$", "", file_list_raw)
     if (!args %in% file_list) {
@@ -52,7 +52,7 @@ sapply_with_progress <- function(X, FUN, ..., simplify = TRUE, USE.NAMES = TRUE)
 }
 
 
-progress <- function(glacier_count){
+progress <- function(glacier, glacier_count){
     print(paste0("Currently processing ",glacier,". ",glacier_count," out of ", length(glacier_list)))
     return(glacier_count + 1)
 }

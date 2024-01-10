@@ -1,8 +1,13 @@
+# Functions x,y,z came from this file
+# THese functions came from this other file
+
+
 landsatRead <- function(filenames){
   library(raster)
   landsatImgs = list()
   k = 1
   
+  pb <- txtProgressBar(min = 0, max = length(filenames), style = 3)
   # Edits 1/18/23 XW: change it to full length because unsure of issue of different DEM
   # for(i in 1:(length(filenames)-2)){ #Change this to -2 for now to deal with the some having a different DEM
   for(i in 1:(length(filenames))){ #Change this to -2 for now to deal with the some having a different DEM
@@ -10,7 +15,10 @@ landsatRead <- function(filenames){
       #temp = projectRaster(temp, crs='+proj=longlat +datum=WGS84') 
       landsatImgs[k] = temp
       k = k + 1
+
+      setTxtProgressBar(pb, i)
     }
+  close(pb)
   return(list("landsatImgs" = landsatImgs))
 }
 
@@ -31,10 +39,13 @@ computeWeights <- function(weighting = 'linear',coord.parallel){
 bandsNDSI <- function(landsatReadOutput){
   NDSI = list()
   landsatImgs = landsatReadOutput$landsatImgs
+  number_of_images = length(landsatReadOutput$landsatImgs)
   
   last_img = landsatReadOutput$landsatImgs[[length(landsatImgs)]]
   #for (i in 1:(length(landsatImgs) - 1)){
-  for (i in 1:length(landsatReadOutput$landsatImgs)){
+  # group them somehow, vectorize
+  pb <- txtProgressBar(min = 0, max = number_of_images, style = 3)
+  for (i in 1:number_of_images){
     if(dim(landsatReadOutput$landsatImgs[[i]])[3] == 12){
       B5_swir = landsatReadOutput$landsatImgs[[i]][[6]]
       B2_green = landsatReadOutput$landsatImgs[[i]][[3]]
@@ -51,8 +62,10 @@ bandsNDSI <- function(landsatReadOutput){
       proj_img = NDSI[[i]]
     }
     NDSI[[i]] = proj_img
+
+    setTxtProgressBar(pb, i)
   }
-  
+  close(pb)
   
   return(NDSI)
 }

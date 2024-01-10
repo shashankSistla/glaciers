@@ -3,7 +3,7 @@
 
 ## Step 2: GD Flowline
 should_plot_flowline  = TRUE
-step_2_params = list(should_plot_flowline = should_plot_flowline)
+step_2_params = list(plot_flowline = plot_flowline)
 
 ## Step 3: Extract intensity profiles along flowline
 max_percent_missing = 0.50
@@ -15,14 +15,11 @@ step_3_params = list(max_percent_missing = max_percent_missing, max_percent_na =
 ## Step 4: Get candidate termini paths
 distPerYear = 50
 plot = TRUE #todo integrate this
-knot_function <- function(ss){
-    print("todo")
-}
-
-step_4_params = list(distPerYear = distPerYear, knot_function = knot_function)
+step_4_params = list(distPerYear = distPerYear)
 
 
 ## Step 5: Termini path clustering
+
 eps_cl = 1500
 plot = TRUE #todo integrate this
 step_5_params = list(eps_cl = eps_cl)
@@ -31,4 +28,4 @@ step_5_params = list(eps_cl = eps_cl)
 
 
 ## Params
-params = list(step_2 = step_2_params, step_3 = step_3_params, step_4 = step_4_params, step_5 = step_5_params)
+params = list(step_3 = step_3_params, step_4 = step_4_params, step_5 = step_5_params)

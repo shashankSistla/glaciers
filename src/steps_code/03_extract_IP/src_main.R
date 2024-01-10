@@ -25,8 +25,8 @@ main.function_03_extract_IP <- function(key, root_dir){
   create_directory(output_dir_path, "output")
 
   # LOAD NECESSARY FILES AND PARAMS
-  max_percent_missing = params$step_3$max_percent_missing
-  max_percent_na = params$step_3$max_percent_na
+  max_frac_na_in_date = params$step_3$max_frac_na_in_date
+  max_frac_na_in_path = params$step_3$max_frac_na_in_path
 
   glacier_count = 1
   for(glacier in glacier_list){
@@ -44,6 +44,7 @@ main.function_03_extract_IP <- function(key, root_dir){
       filenames = filenames[grepl(".tif", filenames, fixed = TRUE)]
 
       #Reading landsat images
+      print("Reading landsat images")
       landsatReadOutput = landsatRead(filenames)
 
       # Compute weights
@@ -58,13 +59,13 @@ main.function_03_extract_IP <- function(key, root_dir){
 
       # can be speedened if CRS is already same
       # Project to CSR of DEM
+      print("Projecting NDSI to DEM")
       NDSI_projected <- sapply_with_progress(NDSI, FUN = function(x) {
           projectRaster(x, crs = crs(dem))
           }, simplify = FALSE)
 
-      ts_int = list()
-
       # Get weighted IP
+      print("Computing weighted IP")
       ts_int = sapply_with_progress(NDSI_projected, FUN = getweightedIP, coord.parallel = coord.parallel, computedWeights = weight, dem = dem)
 
       #This makes a matrix from the list
@@ -73,8 +74,10 @@ main.function_03_extract_IP <- function(key, root_dir){
       }
     
       #Transposing makes it so that the columns correspond to path points instead of the dates
+      # Shape of ts_int is (dates x arclengths)
       ts_int = t(ts_int)
-      
+      print("Dim of ts_int")
+      print(dim(ts_int))
       ## 2/7/2023 XW comment out below two lines: it seems like the flipping is not needed
       # if(abs(mean(ts_int[,1], na.rm = T)) > abs(mean(ts_int[,ncol(ts_int)], na.rm = T))){
       #   ts_int<-ts_int[,c(ncol(ts_int):1)]
@@ -87,36 +90,43 @@ main.function_03_extract_IP <- function(key, root_dir){
       dates = decimaldate(dates)[1:nrow(ts_int)]
 
       #Remove the columns (path points) in which we have more than 80% NAs
-      index = 0
+      cut_off_date_index = 0
       for(i in 1:ncol(ts_int)){
-        if(sum(is.na(ts_int[,i])) > (.80)*nrow(ts_int)){
-          index = i - 1
+        intensities_along_path = ts_int[,i]  # this selects the intensities along a path for a given date
+        threshold_path_na = max_frac_na_in_path*nrow(ts_int) # this computes threshold of rows which can be na
+        rows_na = sum(is.na(intensities_along_path))
+        if(rows_na > threshold_path_na){
+          cut_off_date_index = i - 1
           break
         }
       }
       
-      if(index > 0){
-        ts_int = ts_int[,1:index]
-      }
-
-      #Remove dates that have too much missingness (>50%)
-      pmissing = max_percent_missing
-      indices = c()
-      j = 0
-      for(i in 1:nrow(ts_int)){
-        if(sum(is.na(ts_int[i,]))/ncol(ts_int) > pmissing){
-          j = j + 1
-          indices[j] = i
-        }
+      if(cut_off_date_index > 0){
+        ts_int = ts_int[,1:cut_off_date_index]
       }
 
       #Get arc length in meters between each path point
-      if(index > 0){
-        al = arclength(coord.parallel[,1:2], dem)[1:index]
+      # TODO: Correct the arclength within the function itself
+      if(cut_off_date_index > 0){
+        al = arclength(coord.parallel[,1:2], dem)[1:cut_off_date_index]
       }else{
         al = arclength(coord.parallel[,1:2], dem)
       }
-          
+
+      #Remove dates that have too much missingness (>50%)
+      indices_dates_na = c()
+      j = 0
+      for(i in 1:nrow(ts_int)){
+        intensities_on_date = ts_int[i,]
+        threshold_dates_na = ncol(ts_int)*max_frac_na_in_date
+        dates_na = sum(is.na(intensities_on_date))
+
+        if(dates_na > threshold_dates_na){
+          j = j + 1
+          indices_dates_na[j] = i
+        }
+      }
+ 
       #Remove Dates that are flat (have low variance) 
       #remove rows with a lot of NA or really low variance
       indices_to_remove = c()
@@ -132,29 +142,34 @@ main.function_03_extract_IP <- function(key, root_dir){
       
       #setwd(path)
       indices_to_remove = sort(append(indices_all_zero, indices_to_remove))
-      if(!is.null(indices)){
-        indices_to_remove = sort(append(indices_to_remove, indices))
-      }
+      # if(!is.null(indices_dates_na)){
+      #   indices_to_remove = sort(append(indices_to_remove, indices_dates_na))
+      # }
+      indices_to_remove = sort(append(indices_to_remove, indices_dates_na))
 
-      #Indices to remove is now all the indices we are getting rid of for the glacier and we remove them from ts_int
+      
+      # Pruning ts_int
       if(!identical(indices_to_remove, integer(0))){
         ts_intensity <- ts_int[-(indices_to_remove),]
         dates_cut = dates[-(indices_to_remove)]
-        edited_landsat <-landsatReadOutput$landsatImgs[-indices_to_remove]
+        #edited_landsat <-landsatReadOutput$landsatImgs[-indices_to_remove]
       } else {
         ts_intensity <- ts_int
         dates_cut = dates
-        edited_landsat <- landsatReadOutput$landsatImgs
+        #edited_landsat <- landsatReadOutput$landsatImgs
       }
+
       means = rowMeans(ts_intensity)
-      Q3 = quantile(means, 0.75)
       Q1 = quantile(means, 0.25)
+      Q3 = quantile(means, 0.75)
+
       IQR32 = 1.5*IQR(ts_intensity)
       outliers = which(means > Q3 + IQR32 | means < Q1 - IQR32)
+
       if(length(outliers) != 0){
         ts_intensity <- ts_intensity[-(outliers),]
         dates_cut = dates_cut[-(outliers)]
-        edited_landsat <-edited_landsat$landsatImgs[-outliers]
+        #edited_landsat <-edited_landsat$landsatImgs[-outliers] # used for save GIF. idea, save just the removed indices and re-create later
       }
 
       # write.csv(indices_to_remove, paste0(path,"Processed/",glacier, "_filteredimages.csv"))

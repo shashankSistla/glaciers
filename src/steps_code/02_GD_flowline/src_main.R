@@ -28,7 +28,7 @@ main.function_02_GD_flowline <- function(key, root_dir){
 
     glacier_count = 1
     for(glacier in glacier_list){
-
+        
         #Logging progress
         glacier_count = progress(glacier, glacier_count)
 
@@ -45,9 +45,11 @@ main.function_02_GD_flowline <- function(key, root_dir){
         # Possible edge case - should check the validity of the case
         if(initial.coord[1] < extent(dem)[1] | initial.coord[1] > extent(dem)[2]){
             print("Edge case detected")
+            # to be moved to warnings
         }
 
         # Set step size and window multiplier based on the dimensions of DEM
+        # TODO check the paper out and see how we can pull out 30 and 1200 into the parameters, if we can
         step.size = ((dim(dem)[1] + dim(dem)[2])/2)*30/1200
         window.multiplier = ifelse(floor(step.size/5) < 1, 1, ifelse((step.size/5 - floor(step.size/5)) < 0.5, floor(step.size/5), ceiling(step.size/5)))
         window.multiplier = ifelse(step.size/5 < 0.5, 0.5, window.multiplier)
@@ -69,6 +71,7 @@ main.function_02_GD_flowline <- function(key, root_dir){
             coord.parallel = coord.parallel[1:(indx-1),]
         }
 
+        # Write parallel path co-ordinates to output
         coord_parallel_filename = paste0(output_dir_path,"/output/", glacier,"_coord_parallel.rds")
         saveRDS(coord.parallel, file = coord_parallel_filename)
 

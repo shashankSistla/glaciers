@@ -2,7 +2,6 @@ col_list = c('black','red','yellow','green', 'blue','pink','brown', 'purple', 'c
 
 calculate_covariance_matrix <- function(i, outs) {
   SE = outs[[paste0("out", i)]]$err
-  print(names(SE))
   #covariance matrix
   V_cov <- SE$Vp
   

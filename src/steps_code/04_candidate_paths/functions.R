@@ -5,7 +5,7 @@ get_FV_joined_file <- function() {
     return(FV)
 }
 
-terminus <- function(glacier, obs, ss, tt, meas= NULL, plot = FALSE, direc = NULL, linefit = 1, temporal = 1,invert = 1, distPerYear, knotbuffer = 1){
+terminus <- function(glacier, obs, ss, tt, meas= NULL, plot = FALSE, direc = NULL, linefit = 1, temporal = 1,invert = 1, distPerYear, knotbuffer = 1, n_paths = 10){
   # tSmooth <- temporal_smooth_mat(obs, tt, knotT = min(round(length(tt)/4)+4, 35+4))$est
   knotbuffer = min(4, knotbuffer) # this is set to be 4 at maximum because the knots may be too little when setting spacing too large
   tSmooth <- temporal_smooth_mat(obs, tt, knotT = round(diff(range(tt))/knotbuffer))$est
@@ -16,17 +16,18 @@ terminus <- function(glacier, obs, ss, tt, meas= NULL, plot = FALSE, direc = NUL
   
 #-------------------------------------------------------------------------------
   #source("~/Glaciers 2/DataForShashank/terminus_est.R")
-  term_path = terminus_paths(sSmooth$dd1,tt,ss,glacier,invert=invert,distPerYear)
+  term_path = terminus_paths(sSmooth$dd1,tt,ss,glacier,invert=invert,distPerYear, n_paths = n_paths)
 #----------------------------------------------------------------------------
   outs <- list()
   if (temporal == 1) {
     # out1 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[1]], knotsT =round(length(tt)/30),meas
-  for(i in 1:20){
+  for(i in 1:(2*n_paths)){
     outs[[paste0("out", i)]] <- temporal_smooth(ss, tt, est = sSmooth$est, dd3 = sSmooth$dd3, term_path = term_path[[i]], knotsT = round(diff(range(tt))/knotbuffer), meas)
   }
   out1 = outs[[1]]
     
-    }else if (temporal ==2){# here!
+  }
+  else if (temporal ==2){# here!
     list1 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[1]], knotsT =round(length(tt)/4+2),meas)
     list2 = list(unsmooth = ss[term_path[[1]]])
     out1 = c(list1, list2)
@@ -34,126 +35,12 @@ terminus <- function(glacier, obs, ss, tt, meas= NULL, plot = FALSE, direc = NUL
     out1 = list(unsmooth = ss[term_path[[1]]])
     out1$pred = out1$unsmooth
   }
-  
-  
-  
-  
-  prev_wd = getwd()
-  #setwd("~/Documents/GitHub/Glacier-R-Code/Plots/") #Commented by shashank
-  items = as.matrix(t(c(glacier, term_path[[6]], mean(rowSds(obs)), term_path[[6]]/mean(rowSds(obs)), ncol(obs))))
-
-  
-  # TODO: Uncomment
-  # write.table(items, file = "costs_sd.csv", append = TRUE, quote = FALSE,
-  # col.names = FALSE, row.names = FALSE)
-  
-  change = as.data.frame(as.matrix(t(c(glacier, out1$pred[1], out1$pred[length(out1$pred)],out1$pred[length(out1$pred)] - out1$pred[1], tt[length(tt)] - tt[1], term_path[[11]]/(mean(rowSds(obs))*ncol(obs))))))
- 
-   # TODO: Uncomment
-  # write.table(change, file = "change_overtime.csv", append = TRUE, quote = FALSE, row.names = FALSE, sep = ",", col.names = c("GID", "start", "end", "change", "time", "cost"))
-  #setwd(prev_wd) commented by Shashank
-  #Need for the second two as well 
-  
-  
-  # fit a line through the terminus locations
-  # *** This step needs to be restored, but term_path and tt do not have the same lengths
-  if (temporal == 1) {
-    lm = lm(out1$pred ~ tt) # fit a line through the terminus
-  }else { # here! fit a line through unsmoothed path
-   lm = lm(out1$unsmooth ~ tt) # fit a line through the terminus
-  }
-  slope= coef(lm)[2]
-  
-  #Sandwich estimator for variance of the slope estimate for robustness
-  #NEed to add the weights 
-  
-  #X <- model.matrix(lm)
-  #XX1 <- solve(t(X)%*%X) #X'X inverse
-  
-  #XX1 <- solve(t(X)%*%W%*%X)
-  #u2 <- residuals(lm)^2 #(residuals^2)
-  #XDX <- 0 
-  #Go to the source to summarize the math
-  # for(i in 1:nrow(X)) {
-  #   XDX <- XDX + (out1$predSe[i]^2)*X[i,]%*%t(X[i,])
-  # }
-  
-  # Variance calculation (Bread x meat x Bread)
-  #varcovar <- XX1 %*% XDX %*% XX1
-  
-  # degrees of freedom adjustment
-  #dfc <- sqrt(nrow(X))/sqrt(nrow(X)-ncol(X))
-  
-  # Standard errors of the coefficient estimates are the
-  # square roots of the diagonal elements
-  #stdh <- dfc*sqrt(diag(varcovar))
-  
-  #slope.se = stdh[2]
-  slope.rmse = sqrt(mean((lm$fitted.values - out1$pred)^2))
-  #old naive estimate
-  slope.se= summary(lm)$coef[2,2]
-  line.fit = lm$fitted.values
-  # slope = 0 # Being assigned to 0 and so there is no slope or se
-  # slope.se = 0
-  # line.fit = out1$pred
-  
-  
-  # Ground measurement calculations
-  if(!is.null(meas)){
-    ind = which((meas[,1] > floor(min(tt)))*(meas[,1]<ceiling(max(tt)))==1)
-    adj <- mean(out1$predMeas[ind]) - mean(cumsum(meas[ind,2]))
-    measAdj <- data.frame(tt = meas[ind,1], gm = cumsum(meas[ind,2]) + adj)
-    MIAE <- mean( abs(out1$predMeas[ind] - measAdj[,2]))
-    #Need empirical coverage of the confidence bands
-    MAD <- max( abs(out1$predMeas[ind] - measAdj[,2]) )
-    nMeas <- length(measAdj[,2])
-  }
-  
-  if(is.null(meas)){
-    mat <- matrix(c(slope,slope.se,slope.rmse, NA, NA, NA), nrow = 1)
-    MIAE = NA
-    MAD = NA
-    nMeas = 0
-  }else{
-    mat <- matrix(c(slope,slope.se,slope.rmse, MIAE, MAD, nMeas), nrow = 1)
-  }
-  colnames(mat) <- c("slope","slope.se","slope.rmse", "MIAE", "MAD", "nMeas")
-  #print (mat)
-
-  ##Commented by Shashank 02/01/24
-#   if(!is.na(mat[3])){
-#     write.table(mat,paste0(path,"Plots/",glacier,"/",glacier,".txt"),col.name =TRUE,row.name=FALSE)
-#   }
-  
-  
-  if(plot==1){
-    out1 = outs[[1]]
-    out2 = outs[[2]]
-    out3 = outs[[3]]
-    out4 = outs[[4]]
-    out5 = outs[[5]]
-
-    out11 = outs[[11]]
-    out12 = outs[[12]]
-    out13 = outs[[13]]
-    out14 = outs[[14]]
-    out15 = outs[[15]]
 
 
-    bounds = terminus_plot(direc,glacier,ss,tt,obs,out1,out2, out3,out4,out5, out11, out12, out13, out14, out15, sSmooth,line.fit,meas = meas,measAdj = measAdj,temporal,line.fit,invert, knotbuffer = knotbuffer)
-    #write.table(obs, file = paste(glacier, "unsmoothed intensity.txt"), row.names =FALSE, col.names =FALSE)
-    #write.table(tt, file = paste(glacier, "year.txt"), row.names =FALSE ,col.names =FALSE)
-    #write.table(ss, file = paste(glacier, "distance.txt"), row.names =FALSE, col.names =FALSE)
-  }
-  
-  #list = list(line.fit = line.fit, pred = out1$pred, predSe = out1$predSe, slope = slope, slopeSe = slope.se, dd1 = sSmooth$dd1,
-              #MIAE = MIAE, MAD = MAD, lower = bounds$lower, upper = bounds$upper)
 
   #Need to make sure the arclength now that it is in meters does not decrease because it is possible that flowline turns back slightly
   
-  list = list(line.fit = line.fit, pred = out1$pred, predSe = out1$predSe, slope = slope, slopeSe = slope.se, sSmooth = sSmooth,
-              MIAE = MIAE, MAD = MAD, outs = outs, unsmooth = ss[term_path[[1]]]
-              , indice_path = term_path[[1]], pred.ks = out1$pred.ks, predSe.ks = out1$predSe.ks)
+  list = list(outs = outs, sSmooth = sSmooth)
   return(list)
   
 }
@@ -199,7 +86,7 @@ spatial_smooth <- function(obs, ss, knotS = min(round(length(ss)/4)+4, 35+4)){
   return (list(dd1 = t(dd1), dd2 = t(dd2), dd3=t(dd3), est = t(est)))
 }
 
-terminus_paths <- function(dd1, yearTab, distanceTab, glacier, invert, distPerYear){
+terminus_paths <- function(dd1, yearTab, distanceTab, glacier, invert, distPerYear, n_paths){
   #Offset is 2 for the landsat 5 images and 1 for all landsat 7 and 8 images
   #Landsat 7 starts in 2000
   #Offset the correction for the edge effect on the derivative matrices
@@ -214,61 +101,37 @@ terminus_paths <- function(dd1, yearTab, distanceTab, glacier, invert, distPerYe
   #              distPerYear = distPerYear, flip = 0, offset = offset, n.top = 10),
   #         file = paste0(glacier, "terminus_est_input.rds"))
   term1 = terminus_est(dd1, yearTab, distanceTab,
-                       invert, distPerYear, flip = 0, offset, n.top = 10)
+                       invert, distPerYear, flip = 0, offset, n.top = n_paths)
   # saveRDS(term1,
   #         file = paste0(glacier, "terminus_est_front_output.rds"))
   # print("term 1")
   
   term2 = terminus_est(dd1, yearTab, distanceTab,
-                       invert, distPerYear, flip = 1, offset, n.top = 10)
+                       invert, distPerYear, flip = 1, offset, n.top = n_paths)
   # print("term2")
   # saveRDS(term2,
   #         file = paste0(glacier, "terminus_est_back_output.rds"))
   
   pathCosts <- numeric()
-  
   candidate_paths = cbind(term1,term2)
-  for(i in 1:20){
-    if(i %in% c(1:10)){
+  for(i in 1:(2*n_paths)){
+    if(i %in% c(1:n_paths)){
       pathCosts[i] = pathCost(dd1, candidate_paths[,i], flip = 0)
     }else{
       pathCosts[i] = pathCost(dd1, candidate_paths[,i], flip = 1)
     }
    
   } 
-  print(pathCosts)
+  #print(pathCosts)
   
-  index=sort(pathCosts, index.return=TRUE, decreasing=TRUE)$ix
-  # print(index)
-  # print(candidate_paths[,index[1]])
-  candidate_paths[,11:20] <- flipud(candidate_paths[,11:20])
-  out <- candidate_paths[,index]
-  colnames(out) <- paste0("candidate ", index)
-  # write.csv(out, paste0("~/",
-  #                       glacier, "_Path_index.csv"), row.names = FALSE)
+index = sort(pathCosts, index.return = TRUE, decreasing = TRUE)$ix
+candidate_paths[, 11:20] <- flipud(candidate_paths[, 11:20])
+out <- candidate_paths[, index]
+colnames(out) <- paste0("candidate ", index)
 
-  return(list(candidate_paths[,index[1]], 
-              candidate_paths[,index[2]], 
-              candidate_paths[,index[3]],
-              candidate_paths[,index[4]], 
-              candidate_paths[,index[5]], 
-              candidate_paths[,index[6]], 
-              candidate_paths[,index[7]], 
-              candidate_paths[,index[8]],
-              candidate_paths[,index[9]], 
-              candidate_paths[,index[10]], 
-              candidate_paths[,index[11]], 
-              candidate_paths[,index[12]], 
-              candidate_paths[,index[13]],
-              candidate_paths[,index[14]], 
-              candidate_paths[,index[15]], 
-              candidate_paths[,index[16]], 
-              candidate_paths[,index[17]], 
-              candidate_paths[,index[18]],
-              candidate_paths[,index[19]], 
-              candidate_paths[,index[20]],
-              pathCosts[index[1]]
-              ))
+# Compact return statement using lapply
+return(c(lapply(index[1:20], function(i) candidate_paths[, i])))
+
   
 }
 
@@ -368,9 +231,7 @@ temporal_smooth <- function(ss,tt, est,dd3,term_path, knotsT =-1, meas){
   muT = function( obj, term_path, k){ obj[k,term_path[k]]}
   wts <- sapply( seq(1,nrow(dd3),1), muT, obj = dd3, term_path = term_path)
   wts[wts < 0] = 1e-06
-  
   if (length(unique(ss[term_path])) == 1) {
-    
     b <- knots <- out <- pred <- predSe <- pred.ks <- predSe.ks <- predMeas <- predMeasSe <- NULL
     pred <- ss[term_path]
     predSe <- rep(NA, length(pred))

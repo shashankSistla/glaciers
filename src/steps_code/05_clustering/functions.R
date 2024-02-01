@@ -61,9 +61,23 @@ plot_clustered_paths <- function(glacier, dd1,tt,ss,all_path_list,kc){
 }
 
 
-plot_clustered_mean_std <- function(glacier, dd1, tt, ss, all_path_list, kc, col_list) {
-  
+calculate_mean_std_curves <- function(all_path_list, kc) {
   cluster_ids <- unique(kc)
+  curves_list <- list()
+
+  for (cluster_id in cluster_ids) {
+    cluster_indices <- which(kc == cluster_id)
+    cluster_paths <- all_path_list[cluster_indices]
+    mean_curve <- rowMeans(do.call(cbind, cluster_paths))
+    std_curve <- sqrt(rowSums(sapply(cluster_paths, function(path) (path - mean_curve)^2)) / length(cluster_paths))
+    
+    curves_list[[cluster_id]] <- list(mean = mean_curve, std = std_curve)
+  }
+
+  return(curves_list)
+}
+
+plot_clustered_mean_std <- function(glacier, dd1, tt, ss, curves_list, col_list) {
   
   par(oma=c(0, 1, 0, 0))
   dmax <- quantile(abs(dd1), .99)
@@ -74,21 +88,20 @@ plot_clustered_mean_std <- function(glacier, dd1, tt, ss, all_path_list, kc, col
   col_pal <- cols(64)
   
   image.plot(tt, ss, dd1, zlim = c(-dmax, dmax), ylab = "Flowline arclength (meters)", xlab = "Year", col = col_pal, main = paste(glacier, "Clustered Mean and STD paths"))
-  
-  for (cluster_id in cluster_ids) {
-    cluster_indices <- which(kc == cluster_id)
-    cluster_paths <- all_path_list[cluster_indices]
-    mean_curve <- rowMeans(do.call(cbind, cluster_paths))
-    std_curve <- sqrt(rowSums(sapply(cluster_paths, function(path) (path - mean_curve)^2)) / length(cluster_paths))
+
+  for (i in 1:length(curves_list)) {
+    mean_curve <- curves_list[[i]]$mean
+    std_curve <- curves_list[[i]]$std
     
     # Mean Curve
-    lines(tt, mean_curve, col = col_list[cluster_id], lwd = 2)
+    lines(tt, mean_curve, col = col_list[i], lwd = 2)
     
     # 1 Standard Deviation Shading
-    polygon(c(tt, rev(tt)), c(mean_curve + std_curve, rev(mean_curve - std_curve)), col = adjustcolor(col_list[cluster_id], alpha.f = 0.5), border = NA)
+    polygon(c(tt, rev(tt)), c(mean_curve + std_curve, rev(mean_curve - std_curve)), col = adjustcolor(col_list[i], alpha.f = 0.5), border = NA)
     
     # 2 Standard Deviations Shading
-    polygon(c(tt, rev(tt)), c(mean_curve + 2 * std_curve, rev(mean_curve - 2 * std_curve)), col = adjustcolor(col_list[cluster_id], alpha.f = 0.3), border = NA)
+    polygon(c(tt, rev(tt)), c(mean_curve + 2 * std_curve, rev(mean_curve - 2 * std_curve)), col = adjustcolor(col_list[i], alpha.f = 0.3), border = NA)
   }
   
 }
+

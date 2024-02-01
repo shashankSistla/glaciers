@@ -22,7 +22,7 @@ terminus <- function(glacier, obs, ss, tt, meas= NULL, plot = FALSE, direc = NUL
   if (temporal == 1) {
     # out1 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[1]], knotsT =round(length(tt)/30),meas
   for(i in 1:(2*n_paths)){
-    outs[[paste0("out", i)]] <- temporal_smooth(ss, tt, est = sSmooth$est, dd3 = sSmooth$dd3, term_path = term_path[[i]], knotsT = round(diff(range(tt))/knotbuffer), meas)
+    outs[[paste0("out", i)]] <- temporal_smooth(ss, tt, est = sSmooth$est, dd3 = sSmooth$dd3, term_path = term_path[[i]], knotsT = round(diff(range(tt))/knotbuffer))
   }
   out1 = outs[[1]]
     
@@ -97,21 +97,12 @@ terminus_paths <- function(dd1, yearTab, distanceTab, glacier, invert, distPerYe
   # }
   offset = 1
   if(invert){dd1 = -dd1}
-  # saveRDS(list(dd1 = -dd1, tt = yearTab, ss = distanceTab, invert = invert,
-  #              distPerYear = distPerYear, flip = 0, offset = offset, n.top = 10),
-  #         file = paste0(glacier, "terminus_est_input.rds"))
+
   term1 = terminus_est(dd1, yearTab, distanceTab,
                        invert, distPerYear, flip = 0, offset, n.top = n_paths)
-  # saveRDS(term1,
-  #         file = paste0(glacier, "terminus_est_front_output.rds"))
-  # print("term 1")
-  
   term2 = terminus_est(dd1, yearTab, distanceTab,
                        invert, distPerYear, flip = 1, offset, n.top = n_paths)
-  # print("term2")
-  # saveRDS(term2,
-  #         file = paste0(glacier, "terminus_est_back_output.rds"))
-  
+
   pathCosts <- numeric()
   candidate_paths = cbind(term1,term2)
   for(i in 1:(2*n_paths)){
@@ -122,7 +113,6 @@ terminus_paths <- function(dd1, yearTab, distanceTab, glacier, invert, distPerYe
     }
    
   } 
-  #print(pathCosts)
   
 index = sort(pathCosts, index.return = TRUE, decreasing = TRUE)$ix
 candidate_paths[, 11:20] <- flipud(candidate_paths[, 11:20])
@@ -226,7 +216,7 @@ pathCost <- function(dd1, path, flip){
   return(cost)
 }
 
-temporal_smooth <- function(ss,tt, est,dd3,term_path, knotsT =-1, meas){
+temporal_smooth <- function(ss,tt, est,dd3,term_path, knotsT =-1){
   #evaluate at path, time point k
   muT = function( obj, term_path, k){ obj[k,term_path[k]]}
   wts <- sapply( seq(1,nrow(dd3),1), muT, obj = dd3, term_path = term_path)
@@ -259,25 +249,12 @@ temporal_smooth <- function(ss,tt, est,dd3,term_path, knotsT =-1, meas){
     
     ### predicted values over ground measurement times
     ### This is used to match datetime between ground measurement and the image dates
-    if(!is.null(meas)) {
-      # newd = data.frame( tt = floor(min(tt, meas)):ceiling(max(tt,meas)))	#### need to update????
-      newd = data.frame(tt = meas[,1])
-      out <- predict( b, newd, se.fit = TRUE)
-      predMeas = out$fit
-      predMeasSe = out$se.fit # TODO: is this used anywhere for the later analyses?
-    }
-    else{
-      predMeas = NULL
-      predMeasSe = NULL
-    }
   }
   
   
-  return(list(unsmooth = ss[term_path], pred = pred, predSe = predSe,
-              pred.ks = pred.ks, predSe.ks = predSe.ks,
-              predMeas = predMeas, predMeasSe = predMeasSe,
+  return(list(unsmooth = ss[term_path],
               knots = knots, wts = wts
-               , err = err))
+               , err = err, pred = pred))
 
 }
 

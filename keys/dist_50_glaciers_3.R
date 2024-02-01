@@ -15,17 +15,19 @@ step_3_params = list(max_percent_missing = max_percent_missing, max_percent_na =
 ## Step 4: Get candidate termini paths
 distPerYear = 50
 plot = TRUE #todo integrate this
+n_paths = 10
 knot_function <- function(ss){
     print("todo")
 }
 
-step_4_params = list(distPerYear = distPerYear, knot_function = knot_function)
+step_4_params = list(distPerYear = distPerYear, knot_function = knot_function, n_paths = n_paths)
 
 
-## Step 5: Termini path clustering
 eps_cl = 1500
-plot = TRUE #todo integrate this
-step_5_params = list(eps_cl = eps_cl)
+optics_min_pts = 2
+optics_eps = 50000 # arbitrarily high value
+step_5_plot = TRUE 
+step_5_params = list(eps_cl = eps_cl, n_paths = n_paths, optics_min_pts = optics_min_pts, optics_eps = optics_eps, step_5_plot = step_5_plot)
 
 ## Step 6: Analysis
 

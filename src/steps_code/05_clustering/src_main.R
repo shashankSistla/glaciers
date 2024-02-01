@@ -27,7 +27,7 @@ main.function_05_clustering <- function(key, root_dir){
     step_04_output_dir = paste0(root_dir, "/output/", key, "/04_candidate_paths/output/")
     output_dir = paste0(work_dir_path, "/output/",key,"/",step_name)
     create_directory(output_dir, "output")
-    output_dir = paste0(output_dir, "/output")
+    output_dir_path = paste0(output_dir, "/output")
 
     # LOAD NECESSARY FILES AND PARAMS
     distPerYear = params$step_5$distPerYear
@@ -43,18 +43,31 @@ main.function_05_clustering <- function(key, root_dir){
 
         # Read output from previous steps
         outs = readRDS(paste0(step_04_output_dir, glacier, "_outs.rds"))
+        print("outs is")
+        print(names(outs))
         tt = readRDS(paste0(step_03_output_dir, glacier, "_dates_cut.rds"))
         ss = readRDS(paste0(step_03_output_dir, glacier, "_al.rds"))
         sSmooth = readRDS(paste0(step_04_output_dir, glacier, "_sSmooth.rds"))
 
-        
+        print("length of out$pred")
+        print(length(outs[[paste0("out", 1)]]$pred))
+
+        print("length of tt is")
+        print(length(tt))
+
+        print("length of ss is")
+        print(length(ss))
+
         # Generate paths using multivariate normal sampling
         generated_paths <- list()
-        for(i in seq_len(n_paths)){
+        for(i in seq_len(2*n_paths)){
             mean_vector <- outs[[paste0("out", i)]]$pred
             covariance_matrix <- calculate_covariance_matrix(i, outs) 
             generated_paths[[paste0("path", i, "_original")]] <- mean_vector
-
+            print("mean vector")
+            print(dim(mean_vector))
+            print("covariance matrix")
+            print(dim(covariance_matrix))
             new_samples <- mvrnorm(n = 4, mu = as.vector(mean_vector), Sigma = covariance_matrix)
             for (j in 1:nrow(new_samples)) {
                 generated_paths[[paste0("path", i, "_sample", j)]] <- new_samples[j,]
@@ -76,16 +89,18 @@ main.function_05_clustering <- function(key, root_dir){
         })
 
         # Output directory management
-        create_directory(output_dir, glacier)
-        plots_dir = paste0(output_dir,"/", glacier)
+        create_directory(output_dir_path, glacier)
+        plots_dir = paste0(output_dir_path,"/", glacier)
+
+        
+        # Calculating mean and std curves
+        curves_list <- calculate_mean_std_curves(all_path_list, kc)
+        curves_list_filename = paste0(output_dir_path, "/",glacier,"_curves_list.rds")
+        saveRDS(curves_list, file = curves_list_filename)
+        print(length(curves_list[[1]]$mean))
 
         if(should_plot){
 
-        # Reachability Plot
-        plot_name_reachability = paste0(plots_dir, "/",glacier,"_reachability.png")
-        png(plot_name_reachability)
-        reachabilityPlot(glacier, res)
-        dev.off()
 
         # Clustered paths plot
         plot_name_clustered = paste0(plots_dir, "/",glacier,"_clustered.png")
@@ -93,10 +108,17 @@ main.function_05_clustering <- function(key, root_dir){
         plot_clustered_paths(glacier, sSmooth$dd1,tt,ss,all_path_list,kc)
         dev.off()
 
+
+        # Reachability Plot
+        plot_name_reachability = paste0(plots_dir, "/",glacier,"_reachability.png")
+        png(plot_name_reachability)
+        reachabilityPlot(glacier, res)
+        dev.off()
+
         # Representative path for each cluster with mean and std plot
         plot_name_mean_std = paste0(plots_dir, "/",glacier,"_mean_std.png")
         png(plot_name_mean_std)
-        plot_clustered_mean_std(glacier, sSmooth$dd1, tt, ss, all_path_list, kc, col_list)
+        plot_clustered_mean_std(glacier, sSmooth$dd1, tt, ss, curves_list, col_list)
         dev.off()
         }
     }

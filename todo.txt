@@ -1,6 +1,5 @@
-* Clean code in steps 2,3,4 (consult changes with Xinran, get rid of unecessary code, comments)
 * Add descriptions to every function used in all steps
-* make it so that output dir is created only if input file exists and is valid
+* make it so that output dir is created only if input file is valid
 * Add logging
 * Add warnings logging (consult Xinran for this)
 * Check the DEM data on GEE (above 60 degrees issue)
@@ -8,6 +7,8 @@
 * Remember to add the cost for each final path of the glacier. Costs need to be reported
 * Rename knotS and knotsS (confusing) and add it to knotS. Pull out a function.
 * In functions.R, point to which file the functions came from originally
+* Undo the transpose ts_int
+* Try various glaciers without pruning and see if anything actually happens
 
 step 1 - prepare dem
 step 2 - GD flowline
@@ -16,20 +17,4 @@ step 4 - candidate termini paths (remove statistics, add it to a step 6)
 step 5 - termini path clustering
 step 6 - analysis (comparison with ground readings and possibly other outputs)
 
-
-
-djkstra
-smoothing
-clustering
-
-there may be multiple time series
-
-wednesday 7 AM
-
-#Step 3 changelog
-
-Renaming all variables, re-arranging code.
-
-al is corrected only the first time
-the
 

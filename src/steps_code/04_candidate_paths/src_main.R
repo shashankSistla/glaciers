@@ -16,12 +16,20 @@ main.function_04_candidate_paths <- function(key, root_dir){
     library("customizedTraining")
     library('matlab')
 
+    print("Librarires loaded!!!!!!")
+
     # SOURCE
     source(paste0(root_dir,"/config.R"))
+    print("Sourced config")
+    print("Glacier list dir is")
+    print(paste0(root_dir, "/output/",key,"/04_candidate_paths/glacier_list.R"))
     source(paste0(root_dir, "/output/",key,"/04_candidate_paths/glacier_list.R"))
+    print("Glacier list")
     source(paste0(root_dir, "/src/steps_code/04_candidate_paths/functions.R"))
     source(paste0(root_dir, "/src/base_functions.R"))
     source(paste0(root_dir, "/keys/", key,".R"))
+
+    print("All sources!!!")
 
     # PATH MANAGEMENT
     work_dir_path = config$work_dir_path
@@ -31,7 +39,10 @@ main.function_04_candidate_paths <- function(key, root_dir){
 
     # LOAD NECESSARY FILES AND PARAMS
     distPerYear = params$step_4$distPerYear
+    print("Dist")
+    print(distPerYear)
     n_paths = params$step_4$n_paths
+    print(n_paths)
 
     FV = get_FV_joined_file()
 
@@ -42,7 +53,11 @@ main.function_04_candidate_paths <- function(key, root_dir){
         glacier_count = progress(glacier, glacier_count)
 
         #Get arc length in meters between each path point
+        print("The path is")
+        print(paste0(step_03_output_dir, glacier, "_ts_intensity.rds"))
         ts_intensity = readRDS(paste0(step_03_output_dir, glacier, "_ts_intensity.rds"))
+        print("The other path is")
+        print(paste0(step_03_output_dir, glacier, "_dates_cut.rds"))
         dates_cut = readRDS(paste0(step_03_output_dir, glacier, "_dates_cut.rds"))
         al = readRDS(paste0(step_03_output_dir, glacier, "_al.rds"))
 
@@ -52,7 +67,7 @@ main.function_04_candidate_paths <- function(key, root_dir){
 
         # If I change the original arc length function, this step will be unnecessary
         al = c(0,cumsum(rep(al[length(al)]/(ncol(ts_intensity)-1), (ncol(ts_intensity)-1))))
-        term_paths = terminus(glacier, ts_intensity, al, dates_cut, plot = TRUE, distPerYear = distPerYear,linefit = 0,temporal = 1, direc = plot_path, meas = meas, knotbuffer = 2, n_paths = n_paths)
+        term_paths = terminus(glacier, ts_intensity, al, dates_cut, plot = TRUE, distPerYear = distPerYear,linefit = 0,temporal = 1, direc = plot_path, knotbuffer = 2, n_paths = n_paths)
 
         #TODO structure outs better
         outs_filename = paste0(output_dir, "/output/", glacier,"_outs.rds")
@@ -60,7 +75,5 @@ main.function_04_candidate_paths <- function(key, root_dir){
 
         sSmooth_filename = paste0(output_dir, "/output/", glacier,"_sSmooth.rds")
         saveRDS(term_paths$sSmooth, file = sSmooth_filename)
-
-
     }
 }

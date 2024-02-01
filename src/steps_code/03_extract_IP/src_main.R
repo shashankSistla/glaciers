@@ -51,6 +51,7 @@ main.function_03_extract_IP <- function(key, root_dir){
       weight = computeWeights(weighting = "linear", coord.parallel)
 
       # NDSI Compute
+      print("Computing NDSI")
       NDSI = bandsNDSI(landsatReadOutput)
 
       # Load DEM
@@ -74,10 +75,9 @@ main.function_03_extract_IP <- function(key, root_dir){
       }
     
       #Transposing makes it so that the columns correspond to path points instead of the dates
-      # Shape of ts_int is (dates x arclengths)
       ts_int = t(ts_int)
-      print("Dim of ts_int")
-      print(dim(ts_int))
+      # Shape of ts_int is (dates x arclengths)
+
       ## 2/7/2023 XW comment out below two lines: it seems like the flipping is not needed
       # if(abs(mean(ts_int[,1], na.rm = T)) > abs(mean(ts_int[,ncol(ts_int)], na.rm = T))){
       #   ts_int<-ts_int[,c(ncol(ts_int):1)]
@@ -90,6 +90,7 @@ main.function_03_extract_IP <- function(key, root_dir){
       dates = decimaldate(dates)[1:nrow(ts_int)]
 
       #Remove the columns (path points) in which we have more than 80% NAs
+
       cut_off_date_index = 0
       for(i in 1:ncol(ts_int)){
         intensities_along_path = ts_int[,i]  # this selects the intensities along a path for a given date

@@ -12,7 +12,6 @@ source(paste0(root_dir, "/src/constants.R"))
 
 key = parse_key(args)
 
-
 work_dir_path = config$work_dir_path
 output_dir <- file.path(work_dir_path, "output")
 print("Output_dir")
@@ -43,8 +42,6 @@ for (step in steps) {
     output_script_path <- paste0(root_dir, "/output/", key, "/key_glacier_list.R")
     writeLines(script_content, output_script_path)
 
-
-
     input_script_path <- paste0(root_dir, "/keys/00key_template.R")
     output_script_path <- paste0(root_dir, "/keys/", key,".R")
     script_content <- readLines(input_script_path)
@@ -55,7 +52,4 @@ for (step in steps) {
     script_content <- readLines(input_script_path)
     modified_script_content <- str_replace_all(script_content, key_identifier, key)
     writeLines(modified_script_content, output_script_path)
-
-
-
 }

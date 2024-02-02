@@ -189,5 +189,9 @@ main.function_03_extract_IP <- function(key, root_dir){
       al_filename = paste0(output_dir_path, "/output/", glacier,"_al.rds")
       saveRDS(al, file = al_filename)
 
+      create_directory(paste0(output_dir_path,"/output/"), "plots")
+      filename = paste(output_dir_path, "/output/plots/", glacier,"_ndsi_intensityprofile.png", sep = "")
+      plot_intensities(filename, al, ts_intensity)
+
   }
 }

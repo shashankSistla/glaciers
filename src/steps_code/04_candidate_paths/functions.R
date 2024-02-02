@@ -5,38 +5,24 @@ get_FV_joined_file <- function() {
     return(FV)
 }
 
-terminus <- function(glacier, obs, ss, tt, meas= NULL, plot = FALSE, direc = NULL, linefit = 1, temporal = 1,invert = 1, distPerYear, knotbuffer = 1, n_paths = 10){
+terminus <- function(glacier, obs, ss, tt, meas= NULL, plot = FALSE, direc = NULL, linefit = 1, invert = 1, distPerYear, knotbuffer = 1, n_paths = 10){
   # tSmooth <- temporal_smooth_mat(obs, tt, knotT = min(round(length(tt)/4)+4, 35+4))$est
   knotbuffer = min(4, knotbuffer) # this is set to be 4 at maximum because the knots may be too little when setting spacing too large
-  tSmooth <- temporal_smooth_mat(obs, tt, knotT = round(diff(range(tt))/knotbuffer))$est
-  # tSmooth <- obs
+
+  tSmooth <- time_series_spline_smooth(obs, tt, number_of_knots = round(diff(range(tt))/knotbuffer))
+
   # sSmooth = spatial_smooth(tSmooth, ss, knotS = min(round(diff(range(ss))/3 0), 39))
-  sSmooth = spatial_smooth(tSmooth, ss, knotS = min(round(length(ss)/4)+4, 35+4))
+  sSmooth = spatial_smooth(tSmooth, ss, number_of_knots = min(round(length(ss)/4)+4, 35+4))
   
-  
-#-------------------------------------------------------------------------------
-  #source("~/Glaciers 2/DataForShashank/terminus_est.R")
-  term_path = terminus_paths(sSmooth$dd1,tt,ss,glacier,invert=invert,distPerYear, n_paths = n_paths)
-#----------------------------------------------------------------------------
+  term_path = pilot_path_algorithm(sSmooth$dd1,tt,ss,glacier,invert=invert,distPerYear, n_paths = n_paths)
+
   outs <- list()
-  if (temporal == 1) {
-    # out1 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[1]], knotsT =round(length(tt)/30),meas
+
   for(i in 1:(2*n_paths)){
     outs[[paste0("out", i)]] <- temporal_smooth(ss, tt, est = sSmooth$est, dd3 = sSmooth$dd3, term_path = term_path[[i]], knotsT = round(diff(range(tt))/knotbuffer))
   }
-  out1 = outs[[1]]
-    
-  }
-  else if (temporal ==2){# here!
-    list1 = temporal_smooth(ss,tt,est = sSmooth$est, dd3 =sSmooth$dd3, term_path = term_path[[1]], knotsT =round(length(tt)/4+2),meas)
-    list2 = list(unsmooth = ss[term_path[[1]]])
-    out1 = c(list1, list2)
-  }else {
-    out1 = list(unsmooth = ss[term_path[[1]]])
-    out1$pred = out1$unsmooth
-  }
 
-
+  # knotsT = round(length(tt)/4+2)
 
   #Need to make sure the arclength now that it is in meters does not decrease because it is possible that flowline turns back slightly
   
@@ -46,7 +32,7 @@ terminus <- function(glacier, obs, ss, tt, meas= NULL, plot = FALSE, direc = NUL
 }
 
 
-temporal_smooth_mat <- function(obs, tt, knotT = min(round(length(tt)/4)+4, 35+4)){
+temporal_smooth_mat <- function(obs, tt, knotT = min(round(length(tt)/4)+4, 35+4)){  # renaming to timeSeriesSplineSmooth
   est = matrix( NA, nrow = nrow(obs), ncol = ncol(obs))
   rangT = c(tt[1], tt[length(tt)]); 
   knotsT <- quantile(tt[2:(length(tt)-1)], p = seq(0,1,length.out = knotT));
@@ -60,12 +46,37 @@ temporal_smooth_mat <- function(obs, tt, knotT = min(round(length(tt)/4)+4, 35+4
   return (list(est = est))
 }
 
-spatial_smooth <- function(obs, ss, knotS = min(round(length(ss)/4)+4, 35+4)){
+time_series_spline_smooth <- function(obs, tt, number_of_knots = min(round(length(tt)/4)+4, 35+4)){
+
+  # An empty matrix est, which will contain the smoothened time series
+  smoothened_ts <- matrix( NA, nrow = nrow(obs), ncol = ncol(obs))
+
+  # Assigning knots and creating spline basis
+
+  tt_subset = tt[2 : (length(tt) -1)]
+  p_seq = seq(0,1, length.out = number_of_knots)
+  knots_positions = quantile(tt_subset, p = p_seq)
+  range_tt = c(tt[1], tt[length(tt)]); 
+  b_spline_basis = create.bspline.basis(range_tt, norder = 6, breaks = knots_positions)
+  X = eval.basis(tt, b_spline_basis) # computes values of basis functions at each point in tt
+
+  # Loops through each time series, and smoothens it
+  for( ii in 1:ncol(obs)) { 
+    Slist = list(X=list(diag(ncol(X))))
+    out = mgcv::gam(obs[,ii] ~ -1 + X, paraPen = Slist, family= gaussian(), method = "GCV.Cp")
+    smoothened_ts[,ii] <- X %*% out$coefficients
+  }
+  return (smoothened_ts)
+}
+
+
+
+spatial_smooth <- function(obs, ss, number_of_knots = min(round(length(ss)/4)+4, 35+4)){
   obs = t(obs) #make sure we have rows as intensity as same arc length
   est = dd1 =dd2= dd3 = se2 = matrix( NA, nrow = nrow(obs), ncol = ncol(obs))
   rangS = c(ss[1], ss[length(ss)]); 
-  knotsS <- quantile(ss[2:(length(ss)-1)], p = seq(0,1,length.out = knotS));
-  bbasisS = create.bspline.basis(rangS, norder=6, breaks = knotsS)
+  knots_positions <- quantile(ss[2:(length(ss)-1)], p = seq(0,1,length.out = number_of_knots));
+  bbasisS = create.bspline.basis(rangS, norder=6, breaks = knots_positions)
   X = eval.basis(ss,bbasisS)
   X1 = eval.basis(ss,bbasisS,1)
   X2 = eval.basis(ss,bbasisS,2)
@@ -86,7 +97,7 @@ spatial_smooth <- function(obs, ss, knotS = min(round(length(ss)/4)+4, 35+4)){
   return (list(dd1 = t(dd1), dd2 = t(dd2), dd3=t(dd3), est = t(est)))
 }
 
-terminus_paths <- function(dd1, yearTab, distanceTab, glacier, invert, distPerYear, n_paths){
+pilot_path_algorithm <- function(dd1, yearTab, distanceTab, glacier, invert, distPerYear, n_paths){
   #Offset is 2 for the landsat 5 images and 1 for all landsat 7 and 8 images
   #Landsat 7 starts in 2000
   #Offset the correction for the edge effect on the derivative matrices
@@ -95,6 +106,7 @@ terminus_paths <- function(dd1, yearTab, distanceTab, glacier, invert, distPerYe
   # } else {
   #   offset = 1
   # }
+
   offset = 1
   if(invert){dd1 = -dd1}
 
@@ -256,6 +268,30 @@ temporal_smooth <- function(ss,tt, est,dd3,term_path, knotsT =-1){
               knots = knots, wts = wts
                , err = err, pred = pred))
 
+}
+
+
+plot_candidate_paths <- function(glacier, ss, tt, outs, dd1, n_paths, plot_path){
+  png(plot_path)
+
+  cols = colorRampPalette(c(muted("blue"), "grey", muted("red")))
+  col_pal = cols(64)
+  par(oma=c( 0,1,0,0))
+  dmax = quantile(abs(dd1), .99)
+  dd1[which(dd1 > dmax)] = dmax
+  dd1[which(dd1 < -dmax)] = -dmax
+  image.plot( tt,ss, dd1, zlim = c(-dmax, dmax), ylab = "Flowline arclength (meters)", xlab = "Year",col = col_pal, main=paste(glacier, "Candidate Paths"))
+
+  lines( tt, outs[[1]]$pred , lwd = 3.5, col = "green")
+  lines( tt, outs[[n_paths + 1 ]]$pred , lwd = 3.5, col = "yellow")
+  for(i in 2:n_paths){
+    lines( tt, outs[[i]]$pred , lwd = 1.5, col = "green")
+  }
+  for(i in (n_paths+2):(2*n_paths)){
+    lines( tt, outs[[i]]$pred , lwd = 1.5, col = "yellow")
+  }
+
+  dev.off()
 }
 
 terminus_plot <- function(direc,glacier,ss,tt,obs,out1,out2, out3,out4, out5, out6, out7, out8, out9, out10, sSmooth,line.fit,meas,measAdj,temporal,linefit = 1,invert, knotbuffer = 1, newmethod = FALSE) {

@@ -50,7 +50,6 @@ plot_clustered_paths <- function(glacier, dd1,tt,ss,all_path_list,kc){
 
   par(oma=c( 0,1,0,0))
   dmax = quantile(abs(dd1), .99)
-  dd1_2 = dd1
   dd1[which(dd1 > dmax)] = dmax
   dd1[which(dd1 < -dmax)] = -dmax
 

@@ -1,14 +1,12 @@
 * Add descriptions to every function used in all steps
-* make it so that output dir is created only if input file is valid
 * Add logging
-* Add warnings logging (consult Xinran for this)
 * Check the DEM data on GEE (above 60 degrees issue)
 * Add step wise and total steps time. 
 * Remember to add the cost for each final path of the glacier. Costs need to be reported
-* Rename knotS and knotsS (confusing) and add it to knotS. Pull out a function.
 * In functions.R, point to which file the functions came from originally
-* Undo the transpose ts_int
 * Try various glaciers without pruning and see if anything actually happens
+
+* Ask about ksmooth and unsmooth results
 
 step 1 - prepare dem
 step 2 - GD flowline
@@ -18,3 +16,6 @@ step 5 - termini path clustering
 step 6 - analysis (comparison with ground readings and possibly other outputs)
 
 
+* Notes:
+
+remoed the 'temporal' argument used in the terminus function. this simply changed the way the number of knots were decided, so this was handled by the config file

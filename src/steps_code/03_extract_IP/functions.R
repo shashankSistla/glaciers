@@ -256,3 +256,9 @@ arclength <- function(path, dem){
   
   return(arclength)
 }
+
+plot_intensities <- function(filename, ss, obs){
+  png(filename, width = 6.5, height = 6, units = 'in', res = 300)
+  matplot(ss, t(obs), col = "grey", type = "l", ylab = "Profile intensity", xlab = "Distance along the glacial flowline (meters)", cex.axis = 1.5, cex.lab = 1.5)
+  dev.off()
+}

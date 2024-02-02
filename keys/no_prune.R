@@ -8,6 +8,7 @@ step_2_params = list(should_plot_flowline = should_plot_flowline)
 ## Step 3: Extract intensity profiles along flowline
 max_frac_na_in_date = 0.50
 max_frac_na_in_path = 0.8
+remove_dates = TRUE # integrate this later
 
 step_3_params = list(max_frac_na_in_date = max_frac_na_in_date, max_frac_na_in_path = max_frac_na_in_path)
 

@@ -8,9 +8,10 @@ step_2_params = list(should_plot_flowline = should_plot_flowline)
 ## Step 3: Extract intensity profiles along flowline
 max_frac_na_in_date = 0.50
 max_frac_na_in_path = 0.8
-remove_dates = TRUE # integrate this later
 
-step_3_params = list(max_frac_na_in_date = max_frac_na_in_date, max_frac_na_in_path = max_frac_na_in_path)
+delete_landsat_data_after_processing = TRUE 
+
+step_3_params = list(max_frac_na_in_date = max_frac_na_in_date, max_frac_na_in_path = max_frac_na_in_path,delete_landsat_data_after_processing = delete_landsat_data_after_processing)
 
 ## Step 4: Get candidate termini paths
 
@@ -23,7 +24,7 @@ step_4_params = list(distPerYear = distPerYear, n_paths = n_paths)
 
 eps_cl = 1500
 optics_min_pts = 2
-optics_eps = 50000 # arbitrarily high value
+optics_eps = 500000 # arbitrarily high value
 step_5_plot = TRUE 
 step_5_params = list(eps_cl = eps_cl, n_paths = n_paths, optics_min_pts = optics_min_pts, optics_eps = optics_eps, step_5_plot = step_5_plot)
 

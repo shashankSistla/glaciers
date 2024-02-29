@@ -53,18 +53,36 @@ main.function_04_candidate_paths <- function(key, root_dir){
 
         # If I change the original arc length function, this step will be unnecessary
         al = c(0,cumsum(rep(al[length(al)]/(ncol(ts_intensity)-1), (ncol(ts_intensity)-1))))
-        term_paths = terminus(glacier, ts_intensity, al, dates_cut, plot = TRUE, distPerYear = distPerYear,linefit = 0, direc = plot_path, knotbuffer = 2, n_paths = n_paths)
+
+        #Smoothen each time series as a spline (obs vs tt)
+        knotbuffer = 2
+        knotbuffer = min(4, knotbuffer) # this is set to be 4 at maximum because the knots may be too little when setting spacing too large
+        tSmooth = time_series_spline_smooth(ts_intensity, dates_cut, number_of_knots = round(diff(range(dates_cut))/knotbuffer))
+
+        #Smoothen the spatial components
+        sSmooth = spatial_smooth(tSmooth, al, number_of_knots = min(round(length(al)/4)+4, 35+4))
+
+        pilot_path_output = pilot_path_algorithm(sSmooth$dd1,dates_cut,al,glacier,invert=1 ,distPerYear = distPerYear, n_paths = n_paths)
+        term_paths = pilot_path_output$term_paths
+        path_costs = pilot_path_output$path_costs
 
         #TODO structure outs better
-        outs_filename = paste0(output_dir, "/output/", glacier,"_outs.rds")
-        saveRDS(term_paths$outs, file = outs_filename)
+        outs_filename = paste0(output_dir, "/output/", glacier,"_candidate_paths.rds")
+        saveRDS(term_paths, file = outs_filename)
 
         sSmooth_filename = paste0(output_dir, "/output/", glacier,"_sSmooth.rds")
-        saveRDS(term_paths$sSmooth, file = sSmooth_filename)
-        # print("dd1 is!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        # print(term_paths$sSmooth$dd1)
-        print("plot_path is")
-        print(plot_path)
-        plot_candidate_paths(glacier, al, dates_cut, term_paths$outs, term_paths$sSmooth$dd1, n_paths, plot_path)
+        saveRDS(sSmooth, file = sSmooth_filename)
+
+        path_costs_filename = paste0(output_dir, "/output/", glacier, "_path_costs.rds")
+        saveRDS(path_costs, file = path_costs_filename)
+        
+        values_list <- lapply(term_paths, function(indices) {
+            al[indices]
+        })
+
+
+        plot_candidate_paths(glacier, al, dates_cut, values_list, sSmooth$dd1, n_paths, path_costs, plot_path)
     }
+
+    
 }

@@ -7,27 +7,24 @@ get_FV_joined_file <- function() {
 
 terminus <- function(glacier, obs, ss, tt, meas= NULL, plot = FALSE, direc = NULL, linefit = 1, invert = 1, distPerYear, knotbuffer = 1, n_paths = 10){
   # tSmooth <- temporal_smooth_mat(obs, tt, knotT = min(round(length(tt)/4)+4, 35+4))$est
-  knotbuffer = min(4, knotbuffer) # this is set to be 4 at maximum because the knots may be too little when setting spacing too large
 
-  tSmooth <- time_series_spline_smooth(obs, tt, number_of_knots = round(diff(range(tt))/knotbuffer))
 
-  # sSmooth = spatial_smooth(tSmooth, ss, knotS = min(round(diff(range(ss))/3 0), 39))
-  sSmooth = spatial_smooth(tSmooth, ss, number_of_knots = min(round(length(ss)/4)+4, 35+4))
   
   term_path = pilot_path_algorithm(sSmooth$dd1,tt,ss,glacier,invert=invert,distPerYear, n_paths = n_paths)
 
-  outs <- list()
+  # outs <- list()
 
-  for(i in 1:(2*n_paths)){
-    outs[[paste0("out", i)]] <- temporal_smooth(ss, tt, est = sSmooth$est, dd3 = sSmooth$dd3, term_path = term_path[[i]], knotsT = round(diff(range(tt))/knotbuffer))
-  }
+  # for(i in 1:(2*n_paths)){
+  #   outs[[paste0("out", i)]] <- temporal_smooth(ss, tt, est = sSmooth$est, dd3 = sSmooth$dd3, term_path = term_path[[i]], knotsT = round(diff(range(tt))/knotbuffer))
+  # }
 
   # knotsT = round(length(tt)/4+2)
 
   #Need to make sure the arclength now that it is in meters does not decrease because it is possible that flowline turns back slightly
   
   list = list(outs = outs, sSmooth = sSmooth)
-  return(list)
+  return(term_path)
+  #return(list)
   
 }
 
@@ -59,10 +56,10 @@ time_series_spline_smooth <- function(obs, tt, number_of_knots = min(round(lengt
   range_tt = c(tt[1], tt[length(tt)]); 
   b_spline_basis = create.bspline.basis(range_tt, norder = 6, breaks = knots_positions)
   X = eval.basis(tt, b_spline_basis) # computes values of basis functions at each point in tt
-
   # Loops through each time series, and smoothens it
   for( ii in 1:ncol(obs)) { 
     Slist = list(X=list(diag(ncol(X))))
+    # Slist = list(X=list(getbasispenalty(b_spline_basis)))    ## int b’’_i(t) b’’_j(t) dt  # is each element of the matrix
     out = mgcv::gam(obs[,ii] ~ -1 + X, paraPen = Slist, family= gaussian(), method = "GCV.Cp")
     smoothened_ts[,ii] <- X %*% out$coefficients
   }
@@ -108,6 +105,7 @@ pilot_path_algorithm <- function(dd1, yearTab, distanceTab, glacier, invert, dis
   # }
 
   offset = 1
+  # The code inverts dd1 here. Therefore, all the costs calculated are reversed.
   if(invert){dd1 = -dd1}
 
   term1 = terminus_est(dd1, yearTab, distanceTab,
@@ -115,24 +113,29 @@ pilot_path_algorithm <- function(dd1, yearTab, distanceTab, glacier, invert, dis
   term2 = terminus_est(dd1, yearTab, distanceTab,
                        invert, distPerYear, flip = 1, offset, n.top = n_paths)
 
-  pathCosts <- numeric()
+  path_costs_unordered <- numeric()
   candidate_paths = cbind(term1,term2)
   for(i in 1:(2*n_paths)){
     if(i %in% c(1:n_paths)){
-      pathCosts[i] = pathCost(dd1, candidate_paths[,i], flip = 0)
+      path_costs_unordered[i] = pathCost(dd1, candidate_paths[,i], flip = 0)
     }else{
-      pathCosts[i] = pathCost(dd1, candidate_paths[,i], flip = 1)
+      path_costs_unordered[i] = pathCost(dd1, candidate_paths[,i], flip = 1)
     }
    
   } 
-  
-index = sort(pathCosts, index.return = TRUE, decreasing = TRUE)$ix
-candidate_paths[, 11:20] <- flipud(candidate_paths[, 11:20])
-out <- candidate_paths[, index]
-colnames(out) <- paste0("candidate ", index)
+ print(candidate_paths[,1])
+ print(candidate_paths[,11]) 
+index = sort(path_costs_unordered, index.return = TRUE, decreasing = TRUE)$ix
+candidate_paths[, (n_paths+1):(2*n_paths)] <- flipud(candidate_paths[, (n_paths+1):(2*n_paths)])
+
+
+
 
 # Compact return statement using lapply
-return(c(lapply(index[1:20], function(i) candidate_paths[, i])))
+term_paths <- lapply(1:(2*n_paths), function(i) candidate_paths[, i])
+
+
+return(list(term_paths = term_paths, path_costs = path_costs_unordered))
 
   
 }
@@ -234,10 +237,13 @@ temporal_smooth <- function(ss,tt, est,dd3,term_path, knotsT =-1){
   wts <- sapply( seq(1,nrow(dd3),1), muT, obj = dd3, term_path = term_path)
   wts[wts < 0] = 1e-06
   if (length(unique(ss[term_path])) == 1) {
+    print("am i in the if condition")
     b <- knots <- out <- pred <- predSe <- pred.ks <- predSe.ks <- predMeas <- predMeasSe <- NULL
     pred <- ss[term_path]
     predSe <- rep(NA, length(pred))
     pred.ks <- rep(NA, length(pred))
+    err <- NULL
+    
   } else {
     b <- mgcv::gam(ss[term_path] ~ s(tt, bs = "cr", k = knotsT) , weights = wts, method = "REML")
     knots <- b$smooth[[1]]$xp
@@ -271,7 +277,7 @@ temporal_smooth <- function(ss,tt, est,dd3,term_path, knotsT =-1){
 }
 
 
-plot_candidate_paths <- function(glacier, ss, tt, outs, dd1, n_paths, plot_path){
+plot_candidate_paths <- function(glacier, ss, tt, outs, dd1, n_paths, path_costs, plot_path){
   png(plot_path)
 
   cols = colorRampPalette(c(muted("blue"), "grey", muted("red")))
@@ -282,13 +288,22 @@ plot_candidate_paths <- function(glacier, ss, tt, outs, dd1, n_paths, plot_path)
   dd1[which(dd1 < -dmax)] = -dmax
   image.plot( tt,ss, dd1, zlim = c(-dmax, dmax), ylab = "Flowline arclength (meters)", xlab = "Year",col = col_pal, main=paste(glacier, "Candidate Paths"))
 
-  lines( tt, outs[[1]]$pred , lwd = 3.5, col = "green")
-  lines( tt, outs[[n_paths + 1 ]]$pred , lwd = 3.5, col = "yellow")
-  for(i in 2:n_paths){
-    lines( tt, outs[[i]]$pred , lwd = 1.5, col = "green")
+  min_cost_index_1 = which.max(path_costs[1:n_paths])
+  min_cost_index_2 = which.max(path_costs[(n_paths + 1):(2*n_paths)]) + n_paths
+
+  lines(tt, outs[[min_cost_index_1]], lwd = 3.5, col = "green")
+  lines(tt, outs[[min_cost_index_2]], lwd = 3.5, col = "yellow")
+
+  # Plot the other paths
+  for(i in 1:n_paths){
+    if (i != min_cost_index_1) {
+      lines(tt, outs[[i]], lwd = 1.5, col = "green")
+    }
   }
-  for(i in (n_paths+2):(2*n_paths)){
-    lines( tt, outs[[i]]$pred , lwd = 1.5, col = "yellow")
+  for(i in (n_paths+1):(2*n_paths)){
+    if (i != min_cost_index_2) {
+      lines(tt, outs[[i]], lwd = 1.5, col = "yellow")
+    }
   }
 
   dev.off()
@@ -463,3 +478,24 @@ terminus_plot <- function(direc,glacier,ss,tt,obs,out1,out2, out3,out4, out5, ou
   # list(lower = unname(omin), upper = unname(omax))
 
 }
+
+
+plot_rgb <- function(glacier, landsatImg, coord.parallel, term_paths, al, index){
+  plotRGB(landsatImg, r = 3, g = 2, b = 1, stretch = "hist", axes = T,
+          main = paste(glacier, as.character(names(landsatImg)[1])))
+  lines(coord.parallel$x, coord.parallel$y, col = "red", lwd = 1.5)
+  points(initial.coord[1], initial.coord[2], cex = 1.2, col = "black", pch = 16)
+  ind = which.min(abs(al - term_paths$pred[index]))
+  points(coord.parallel$x[ind], coord.parallel$y[ind], col = "red", cex = 1.5, pch = 16)
+  # ind = which.min(abs(al - term_paths$pred.ks[index]))
+  # points(coord.parallel$x[ind], coord.parallel$y[ind], col = "red", cex = 1.5, pch = 2)
+  # ind = which.min(abs(al - term_paths$unsmooth[index]))
+  # points(coord.parallel$x[ind], coord.parallel$y[ind], col = "red", cex = 1.5, pch = 3)
+  # legend("bottomright", legend= c("Start", "GAM", "KS-Smooth","Unsmooth"),
+  #        col = c("black", "red", "red", "red"),
+  #        pch = c(16,16,2,3))
+  legend("bottomright", legend= c("Start", "Model 1"),
+         col = c("black", "red"),
+         pch = c(16,16))
+  }
+

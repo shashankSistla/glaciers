@@ -27,6 +27,7 @@ main.function_03_extract_IP <- function(key, root_dir){
   # LOAD NECESSARY FILES AND PARAMS
   max_frac_na_in_date = params$step_3$max_frac_na_in_date
   max_frac_na_in_path = params$step_3$max_frac_na_in_path
+  delete_landsat_data_after_processing = params$step_3$delete_landsat_data_after_processing
 
   glacier_count = 1
   for(glacier in glacier_list){
@@ -37,16 +38,19 @@ main.function_03_extract_IP <- function(key, root_dir){
       # Loading parallel path co-ordinates
       coord.parallel = readRDS(paste0(step_02_output_dir, glacier, "_coord_parallel.rds"))
 
+      
       # Getting landsat image filenames
       glacier_landsat_images_dir = paste0(landsat_images_dir_path, "/", glacier,"/")
+
+
       setwd(glacier_landsat_images_dir)
+
       filenames = list.files(getwd())
       filenames = filenames[grepl(".tif", filenames, fixed = TRUE)]
 
       #Reading landsat images
       print("Reading landsat images")
       landsatReadOutput = landsatRead(filenames)
-
       # Compute weights
       weight = computeWeights(weighting = "linear", coord.parallel)
 
@@ -189,9 +193,26 @@ main.function_03_extract_IP <- function(key, root_dir){
       al_filename = paste0(output_dir_path, "/output/", glacier,"_al.rds")
       saveRDS(al, file = al_filename)
 
+      # the code here reads config and deletes the old landsat data
+      # if(delete_landsat_data_after_processing){
+      #   unlink(glacier_landsat_images_dir, recursive = TRUE)
+      # }
+
       create_directory(paste0(output_dir_path,"/output/"), "plots")
       filename = paste(output_dir_path, "/output/plots/", glacier,"_ndsi_intensityprofile.png", sep = "")
       plot_intensities(filename, al, ts_intensity)
+
+      create_directory(paste0(output_dir_path, "/output/"), "temp_NDSI_files")
+      temp_NDSI_files_path = paste0(output_dir_path, "/output/temp_NDSI_files/")
+      NDSI_pruned = NDSI[-(indices_to_remove)]
+
+      date_strings = lapply(dates_cut, convertDecimalYearToDate)
+      print(date_strings)
+
+      # for(i in 1:length(NDSI_pruned)){
+      #       temp_ndsi_file_name = paste0(temp_NDSI_files_path, glacier,"_", date_strings[[i]])
+      #       writeRaster(NDSI[[i]], filename=temp_ndsi_file_name, format="GTiff", overwrite=TRUE)
+      # }
 
   }
 }

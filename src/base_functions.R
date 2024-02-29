@@ -51,8 +51,68 @@ sapply_with_progress <- function(X, FUN, ..., simplify = TRUE, USE.NAMES = TRUE)
   return(results)
 }
 
+lapply_with_progress <- function(X, FUN, ..., USE.NAMES = TRUE) {
+  pb <- txtProgressBar(min = 0, max = length(X), style = 3)
+  results <- vector("list", length(X))
+  
+  for(i in seq_along(X)) {
+    results[[i]] <- FUN(X[[i]], ...)
+    setTxtProgressBar(pb, i)
+  }
+  
+  close(pb)
+  
+  # Apply names to the results if USE.NAMES is TRUE and names are available
+  if(USE.NAMES && !is.null(names(X))) {
+    names(results) <- names(X)
+  }
+
+  return(results)
+}
+
+
 
 progress <- function(glacier, glacier_count){
     print(paste0("Currently processing ",glacier,". ",glacier_count," out of ", length(glacier_list)))
     return(glacier_count + 1)
+}
+
+convertDecimalYearToDate <- function(decimalYear) {
+  # Extract the year part and calculate the remaining decimal part
+  year <- floor(decimalYear)
+  decimalPart <- decimalYear - year
+  
+  # Check if the year is a leap year
+  isLeapYear <- ifelse((year %% 4 == 0 & year %% 100 != 0) | year %% 400 == 0, TRUE, FALSE)
+  
+  # Calculate the day of the year
+  dayOfYear <- round(decimalPart * ifelse(isLeapYear, 366, 365))
+  
+  # Convert the day of the year to a date
+  date <- as.Date(paste(year, "-01-01", sep="")) + (dayOfYear - 1)
+  
+  # Format the date as YYYY-MM-DD
+  formattedDate <- format(date, "%Y-%m-%d")
+  
+  return(formattedDate)
+}
+
+landsatRead <- function(filenames){
+  library(raster)
+  landsatImgs = list()
+  k = 1
+  
+  pb <- txtProgressBar(min = 0, max = length(filenames), style = 3)
+  # Edits 1/18/23 XW: change it to full length because unsure of issue of different DEM
+  # for(i in 1:(length(filenames)-2)){ #Change this to -2 for now to deal with the some having a different DEM
+  for(i in 1:(length(filenames))){ #Change this to -2 for now to deal with the some having a different DEM
+        temp = stack(filenames[i])
+      #temp = projectRaster(temp, crs='+proj=longlat +datum=WGS84') 
+      landsatImgs[k] = temp
+      k = k + 1
+
+      setTxtProgressBar(pb, i)
+    }
+  close(pb)
+  return(list("landsatImgs" = landsatImgs))
 }

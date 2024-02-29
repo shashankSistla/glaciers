@@ -23,6 +23,7 @@ main.function_05_clustering <- function(key, root_dir){
 
     # PATH MANAGEMENT
     work_dir_path = config$work_dir_path
+    landsat_images_dir_path = config$landsat_images_dir_path
     step_03_output_dir = paste0(root_dir, "/output/", key, "/03_extract_IP/output/")
     step_04_output_dir = paste0(root_dir, "/output/", key, "/04_candidate_paths/output/")
     output_dir = paste0(work_dir_path, "/output/",key,"/",step_name)
@@ -36,51 +37,35 @@ main.function_05_clustering <- function(key, root_dir){
     optics_eps = params$step_5$optics_eps
     should_plot = params$step_5$step_5_plot
 
-    print("min pts is")
-    print(optics_min_pts)
+    # Output directory management
+    create_directory(output_dir_path, "plots")
+    plots_dir = paste0(output_dir_path,"/", "plots")
+
+
 
     for(glacier in glacier_list){
 
         # Read output from previous steps
-        outs = readRDS(paste0(step_04_output_dir, glacier, "_outs.rds"))
-        print("outs is")
-        print(names(outs))
+        candidate_paths = readRDS(paste0(step_04_output_dir, glacier, "_candidate_paths.rds"))
+        path_costs = readRDS(paste0(step_04_output_dir, glacier, "_path_costs.rds"))
         tt = readRDS(paste0(step_03_output_dir, glacier, "_dates_cut.rds"))
         ss = readRDS(paste0(step_03_output_dir, glacier, "_al.rds"))
         sSmooth = readRDS(paste0(step_04_output_dir, glacier, "_sSmooth.rds"))
 
-        print("length of out$pred")
-        print(length(outs[[paste0("out", 1)]]$pred))
-
-        print("length of tt is")
-        print(length(tt))
-
-        print("length of ss is")
-        print(length(ss))
-
-        # Generate paths using multivariate normal sampling
-        generated_paths <- list()
-        for(i in seq_len(2*n_paths)){
-            mean_vector <- outs[[paste0("out", i)]]$pred
-            covariance_matrix <- calculate_covariance_matrix(i, outs) 
-            generated_paths[[paste0("path", i, "_original")]] <- mean_vector
-            print("mean vector")
-            print(dim(mean_vector))
-            print("covariance matrix")
-            print(dim(covariance_matrix))
-            new_samples <- mvrnorm(n = 4, mu = as.vector(mean_vector), Sigma = covariance_matrix)
-            for (j in 1:nrow(new_samples)) {
-                generated_paths[[paste0("path", i, "_sample", j)]] <- new_samples[j,]
-            }
+        # Make the paths a matrix
+        all_paths_indices <- do.call(rbind, candidate_paths)
+        all_paths <- list()
+        for (i in 1:nrow(all_paths_indices)) {
+            all_paths[[i]] <- ss[all_paths_indices[i, ]]
         }
 
-        # Make the paths a matrix
-        all_paths <- do.call(rbind, generated_paths)
+        all_paths <- do.call(rbind, all_paths)
 
         # Apply OPTICS and extract clusters
         optics_result <- optics(all_paths,  minPts = optics_min_pts, eps = optics_eps)
         res <- extractDBSCAN(optics_result, eps_cl)
         kc = res$cluster
+        print(kc)
 
         # Convert the paths into a list
         all_path_list <- lapply(seq_len(ncol(t(all_paths))), function(i) {
@@ -88,24 +73,31 @@ main.function_05_clustering <- function(key, root_dir){
             return(pilot_path)
         })
 
-        # Output directory management
-        create_directory(output_dir_path, glacier)
-        plots_dir = paste0(output_dir_path,"/", glacier)
-
         
         # Calculating mean and std curves
-        curves_list <- calculate_mean_std_curves(all_path_list, kc)
-        curves_list_filename = paste0(output_dir_path, "/",glacier,"_curves_list.rds")
-        saveRDS(curves_list, file = curves_list_filename)
-        print(length(curves_list[[1]]$mean))
+        # curves_list <- calculate_mean_std_curves(all_path_list, kc)
+        # curves_list_filename = paste0(output_dir_path, "/",glacier,"_curves_list.rds")
+        # saveRDS(curves_list, file = curves_list_filename)
+        # print(length(curves_list[[1]]$mean))
+
+
+        min_cost_indices <- sapply(unique(kc), function(cluster) {
+        cluster_indices = which(kc == cluster)  # Indices of paths in this cluster
+        cluster_costs = path_costs[cluster_indices]  # Costs of paths in this cluster
+        min_index = cluster_indices[which.max(cluster_costs)]  # Index of the min cost path in the original vector (not sure why it's max but this is correct)
+        return(min_index)
+        })
+
+        min_cost_indices_filename = paste0(output_dir_path, "/",glacier,"_min_cost_indices.rds")
+        saveRDS(min_cost_indices, file = min_cost_indices_filename)
 
         if(should_plot){
 
 
-        # Clustered paths plot
+        # Clustered paths plot, must highlight path with least cost
         plot_name_clustered = paste0(plots_dir, "/",glacier,"_clustered.png")
         png(plot_name_clustered)
-        plot_clustered_paths(glacier, sSmooth$dd1,tt,ss,all_path_list,kc)
+        plot_clustered_paths(glacier, sSmooth$dd1,tt,ss,all_path_list,kc, min_cost_indices)
         dev.off()
 
 
@@ -116,10 +108,28 @@ main.function_05_clustering <- function(key, root_dir){
         dev.off()
 
         # Representative path for each cluster with mean and std plot
-        plot_name_mean_std = paste0(plots_dir, "/",glacier,"_mean_std.png")
-        png(plot_name_mean_std)
-        plot_clustered_mean_std(glacier, sSmooth$dd1, tt, ss, curves_list, col_list)
-        dev.off()
+        # plot_name_mean_std = paste0(plots_dir, "/",glacier,"_mean_std.png")
+        # png(plot_name_mean_std)
+        # plot_clustered_mean_std(glacier, sSmooth$dd1, tt, ss, curves_list, col_list)
+        # dev.off()
+        
+
         }
+
+        date_strings = lapply(tt, convertDecimalYearToDate)
+        
+        landsat_image_paths <- list()
+
+        for(i in 1:length(tt)) {
+            date_string = convertDecimalYearToDate(tt[[i]])
+            landsat_image_path = paste0(landsat_images_dir_path, glacier, "_", date_string, "_L5_T1_TOA.tif")
+            landsat_image_paths[[i]] <- landsat_image_path
+        }
+
+        print("Reading landsat images")
+        #landsatReadOutput = landsatRead(landsat_image_paths)
+
+# landsat_image_paths now contains all the generated paths
+
     }
     }

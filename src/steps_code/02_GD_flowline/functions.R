@@ -223,3 +223,5 @@ plot_dem <- function(glacier, dem, initial.coord, coord.parallel, plot_path){
   points(initial.coord[1], initial.coord[2], cex = 0.7,col = "black", pch = 16)
   dev.off()
 }
+
+

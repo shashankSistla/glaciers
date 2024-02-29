@@ -52,4 +52,10 @@ for (step in steps) {
     script_content <- readLines(input_script_path)
     modified_script_content <- str_replace_all(script_content, key_identifier, key)
     writeLines(modified_script_content, output_script_path)
+
+    input_script_path <- paste0(root_dir, "/src/run_scripts_per_glacier_template.R")
+    output_script_path <- paste0(root_dir, "/output/", key, "/run_all_steps.R")
+    script_content <- readLines(input_script_path)
+    modified_script_content <- str_replace_all(script_content, key_identifier, key)
+    writeLines(modified_script_content, output_script_path)
 }

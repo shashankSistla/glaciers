@@ -9,6 +9,13 @@ main.function_01_prepare_dem <- function(key, root_dir){
     library(terra)
     library(raster)
 
+    options(repos = c(CRAN = "https://cloud.r-project.org/"))
+
+    install.packages("aws.s3")
+
+    
+
+
     # SOURCE
     source(paste0(root_dir,"/config.R"))
     source(paste0(root_dir, "/src/steps_code/01_prepare_dem/functions.R"))
@@ -32,6 +39,18 @@ main.function_01_prepare_dem <- function(key, root_dir){
         # Select current glacier's directory
         glacier_landsat_images_dir = paste0(landsat_images_dir_path, "/", glacier,"/")
 
+        if (dir.exists(glacier_landsat_images_dir)){
+            print("Getting landsat data locally")
+        }
+        else{
+            print("Fetching data from S3")
+            create_directory(landsat_images_dir_path, glacier)
+            glacier_landsat_images_dir = paste0(landsat_images_dir_path, "/", glacier,"/")
+            print("glacier is")
+            print(glacier)
+            download_files_from_s3(glacier, glacier_landsat_images_dir)
+        }
+      
         # Select all .tif files from directory
         filenames = list.files(glacier_landsat_images_dir)
         filenames = filenames[grepl(".tif", filenames, fixed = TRUE)]

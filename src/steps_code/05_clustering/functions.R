@@ -2,6 +2,9 @@ col_list = c('black','red','yellow','green', 'blue','pink','brown', 'purple', 'c
 
 calculate_covariance_matrix <- function(i, outs) {
   SE = outs[[paste0("out", i)]]$err
+
+  if(is.null(SE))
+    return(NULL)
   #covariance matrix
   V_cov <- SE$Vp
   
@@ -17,6 +20,8 @@ calculate_covariance_matrix <- function(i, outs) {
 reachabilityPlot<- function(glacier, res){
   reachDist = res$reachdist
   reachDist[[1]] = 0
+
+
   kc = res$cluster
   kc = replaceZeros(kc)
   plot(1, type="n",xlim = c(1, length(res$order)), ylim = c(0, max(reachDist)),
@@ -43,7 +48,7 @@ replaceZeros <- function(arr) {
   return(arr)
 }
 
-plot_clustered_paths <- function(glacier, dd1,tt,ss,all_path_list,kc){
+plot_clustered_paths <- function(glacier, dd1,tt,ss,all_path_list,kc, min_cost_indices){
   kc = replaceZeros(kc)
   cols = colorRampPalette(c(muted("blue"), "grey", muted("red")))
   col_pal = cols(64)
@@ -54,22 +59,44 @@ plot_clustered_paths <- function(glacier, dd1,tt,ss,all_path_list,kc){
   dd1[which(dd1 < -dmax)] = -dmax
 
   image.plot( tt,ss, dd1, zlim = c(-dmax, dmax), ylab = "Flowline arclength (meters)", xlab = "Year",col = col_pal, main=paste(glacier, "Clustered paths"))
+
+# Using sapply to compute minimum cost indices
+
+
+  # Plotting paths
   for (i in seq_along(all_path_list)) {
-    lines(tt, all_path_list[[i]], col = col_list[[kc[[i]]]], lwd = 2)
+    # Check if the current path is a minimum cost path within its cluster
+    if (i %in% min_cost_indices) {
+      line_width =2  # Thicker line for minimum cost path
+    } else {
+      line_width = 1  # Normal line otherwise
+    }
+
+    lines(tt, all_path_list[[i]],  col = col_list[[kc[[i]]]], lwd = line_width)
   }
+
 }
 
 
 calculate_mean_std_curves <- function(all_path_list, kc) {
+  kc = replaceZeros(kc)
   cluster_ids <- unique(kc)
   curves_list <- list()
 
   for (cluster_id in cluster_ids) {
     cluster_indices <- which(kc == cluster_id)
     cluster_paths <- all_path_list[cluster_indices]
-    mean_curve <- rowMeans(do.call(cbind, cluster_paths))
-    std_curve <- sqrt(rowSums(sapply(cluster_paths, function(path) (path - mean_curve)^2)) / length(cluster_paths))
-    
+
+    if (length(cluster_paths) == 1) {
+      # Handle the one-dimensional case
+      mean_curve <- cluster_paths[[1]] # The mean curve is the curve itself
+      std_curve <- rep(0, length(mean_curve)) # Standard deviation is a vector of zeros
+    } else {
+      # Handle the general case
+      mean_curve <- rowMeans(do.call(cbind, cluster_paths))
+      std_curve <- sqrt(rowSums(sapply(cluster_paths, function(path) (path - mean_curve)^2)) / (length(cluster_paths) - 1)) # Note the -1 for Bessel's correction
+    }
+
     curves_list[[cluster_id]] <- list(mean = mean_curve, std = std_curve)
   }
 
@@ -84,7 +111,7 @@ plot_clustered_mean_std <- function(glacier, dd1, tt, ss, curves_list, col_list)
   dd1[which(dd1 < -dmax)] <- -dmax
   
   cols <- colorRampPalette(c(muted("blue"), "grey", muted("red")))
-  col_pal <- cols(64)
+
   
   image.plot(tt, ss, dd1, zlim = c(-dmax, dmax), ylab = "Flowline arclength (meters)", xlab = "Year", col = col_pal, main = paste(glacier, "Clustered Mean and STD paths"))
 

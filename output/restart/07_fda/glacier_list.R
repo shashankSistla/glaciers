@@ -1,0 +1,1 @@
+glacier_list <- c('G078184E41824N')

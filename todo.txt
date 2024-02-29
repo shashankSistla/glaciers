@@ -1,12 +1,29 @@
 * Add descriptions to every function used in all steps
 * Add logging
-* Check the DEM data on GEE (above 60 degrees issue)
+* Check the DEM data on GEE (above 60 degrees issue) - found the edge case for glacier number G008426E46612N
 * Add step wise and total steps time. 
 * Remember to add the cost for each final path of the glacier. Costs need to be reported
 * In functions.R, point to which file the functions came from originally
 * Try various glaciers without pruning and see if anything actually happens
 
+* I have to fix the edge case issue
+* Add time logs
+* Add logging of all steps 
+
+
 * Ask about ksmooth and unsmooth results
+
+
+What I did:
+* Added download from aws s3 if landsat data is not available locally
+* Added progress bars to the download
+* Added feature to delete landsat if necessary
+* Added feature to run glacier wise. Should check if the landsat data gets deleted appropriately
+* Added feature to store, and later delete NDSI
+
+Where I left of:
+* Use stored NDSI and landsat to make GIFs
+
 
 step 1 - prepare dem
 step 2 - GD flowline

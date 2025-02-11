@@ -116,3 +116,10 @@ landsatRead <- function(filenames){
   close(pb)
   return(list("landsatImgs" = landsatImgs))
 }
+
+generate_color_kc <- function(kc) {
+  unique_kc <- unique(kc)
+  color_kc <- sapply(kc, function(x) which(unique_kc == x))
+  return(color_kc)
+}
+

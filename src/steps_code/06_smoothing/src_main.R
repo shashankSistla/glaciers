@@ -33,7 +33,11 @@ main.function_06_smoothing <- function(key, root_dir){
     create_directory(output_dir_path, "plots")
     plots_dir = paste0(output_dir_path,"/", "plots")
 
+
+    glacier_count = 1
     for(glacier in glacier_list){
+        #Logging progress
+        glacier_count = progress(glacier, glacier_count)
 
         dates_cut = readRDS(paste0(step_03_output_dir, glacier, "_dates_cut.rds"))
         al = readRDS(paste0(step_03_output_dir, glacier, "_al.rds"))
@@ -51,16 +55,13 @@ main.function_06_smoothing <- function(key, root_dir){
         smoothened_paths[[i]] = temporal_smooth(al, dates_cut, dd3 = sSmooth$dd3, term_path = selected_candidate_paths[[i]], knotsT = round(diff(range(dates_cut))/knotbuffer))
         }
 
-
+        smoothened_paths_filename = paste0(output_dir_path, "/",glacier,"_smoothened_paths.rds")
+        saveRDS(smoothened_paths, file = smoothened_paths_filename)
 
         plot_name_smoothened = paste0(plots_dir, "/",glacier,"_smoothened.png")
         png(plot_name_smoothened)
         plot_smoothened_paths(glacier, sSmooth$dd1,dates_cut,al,smoothened_paths)
         dev.off()
-
-        
-        
-
 
     }
 

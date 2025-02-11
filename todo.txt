@@ -6,7 +6,6 @@
 * In functions.R, point to which file the functions came from originally
 * Try various glaciers without pruning and see if anything actually happens
 
-* I have to fix the edge case issue
 * Add time logs
 * Add logging of all steps 
 

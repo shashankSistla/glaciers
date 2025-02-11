@@ -36,6 +36,8 @@ main.function_01_prepare_dem <- function(key, root_dir){
         #Logging progress
         glacier_count = progress(glacier, glacier_count)
 
+        tryCatch({
+
         # Select current glacier's directory
         glacier_landsat_images_dir = paste0(landsat_images_dir_path, "/", glacier,"/")
 
@@ -92,7 +94,9 @@ main.function_01_prepare_dem <- function(key, root_dir){
         # Write the dem to output directory
         raster_filename = paste0(output_dir,"/output/", glacier,"_dem")
         writeRaster(dem, filename=raster_filename, format="GTiff", overwrite=TRUE)
-
+    },error = function(e) {
+        message(sprintf("Error in processing glacier %s for glacier: %s", glacier, e$message))
+    })
     }
 }
 

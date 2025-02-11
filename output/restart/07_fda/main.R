@@ -1,4 +1,4 @@
-key = "dist_100"
+key = "restart"
 library(rprojroot)
 
 root_criterion <- has_file("Glaciers.Rproj")

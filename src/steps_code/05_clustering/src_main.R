@@ -42,9 +42,10 @@ main.function_05_clustering <- function(key, root_dir){
     plots_dir = paste0(output_dir_path,"/", "plots")
 
 
-
+    glacier_count = 1
     for(glacier in glacier_list){
-
+        #Logging progress
+        glacier_count = progress(glacier, glacier_count)
         # Read output from previous steps
         candidate_paths = readRDS(paste0(step_04_output_dir, glacier, "_candidate_paths.rds"))
         path_costs = readRDS(paste0(step_04_output_dir, glacier, "_path_costs.rds"))
@@ -61,11 +62,26 @@ main.function_05_clustering <- function(key, root_dir){
 
         all_paths <- do.call(rbind, all_paths)
 
+        normalized_all_paths <- all_paths / sqrt(dim(all_paths)[2])
+
         # Apply OPTICS and extract clusters
-        optics_result <- optics(all_paths,  minPts = optics_min_pts, eps = optics_eps)
+        optics_result <- optics(normalized_all_paths,  minPts = optics_min_pts, eps = optics_eps)
+
+        eps_cl = max(ss)*0.05
         res <- extractDBSCAN(optics_result, eps_cl)
         kc = res$cluster
         print(kc)
+
+        print("dim of all paths is")
+        print(dim(all_paths))
+
+        print("ssmax is")
+        print(max(ss))
+        print("number of timestamps is")
+        print(dim(all_paths)[2])
+
+        print("eps_cl is")
+        print(eps_cl)
 
         # Convert the paths into a list
         all_path_list <- lapply(seq_len(ncol(t(all_paths))), function(i) {

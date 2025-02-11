@@ -1,4 +1,5 @@
-col_list = c('black','red','yellow','green', 'blue','pink','brown', 'purple', 'cyan', 'magenta', 'grey', 'darkgreen', 'darkblue')
+col_list = c('black','red','yellow','green', 'blue','pink','brown', 'purple', 'cyan', 'magenta', 'grey', 'darkgreen', 'darkblue', 'lightblue', 'magenta','magenta','magenta','magenta')
+
 
 temporal_smooth <- function(ss,tt, dd3,term_path, knotsT =-1){
   #evaluate at path, time point k
@@ -41,7 +42,7 @@ temporal_smooth <- function(ss,tt, dd3,term_path, knotsT =-1){
   
   return(list(unsmooth = ss[term_path],
               knots = knots, wts = wts
-               , err = err, pred = pred))
+               , err = err, pred = pred, fit = b))
 
 }
 
@@ -55,7 +56,7 @@ plot_smoothened_paths <- function(glacier, dd1,tt,ss,all_path_list){
   dd1[which(dd1 > dmax)] = dmax
   dd1[which(dd1 < -dmax)] = -dmax
 
-  image.plot( tt,ss, dd1, zlim = c(-dmax, dmax), ylab = "Flowline arclength (meters)", xlab = "Year",col = col_pal, main=paste(glacier, "Clustered paths"))
+  image.plot( tt,ss, dd1, zlim = c(-dmax, dmax), ylab = "Flowline arclength (meters)", xlab = "Year",col = col_pal, main=paste(glacier, "Smoothened paths"))
 
 # Using sapply to compute minimum cost indices
 

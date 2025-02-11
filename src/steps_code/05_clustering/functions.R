@@ -1,4 +1,4 @@
-col_list = c('black','red','yellow','green', 'blue','pink','brown', 'purple', 'cyan', 'magenta', 'grey', 'darkgreen', 'darkblue')
+col_list = c('black','red','yellow','green', 'blue','pink','brown', 'purple', 'cyan', 'magenta', 'grey', 'darkgreen', 'darkblue', 'lightblue', 'magenta','magenta','magenta','magenta','magenta','magenta','magenta','magenta','magenta','magenta','magenta','magenta','magenta')
 
 calculate_covariance_matrix <- function(i, outs) {
   SE = outs[[paste0("out", i)]]$err
@@ -27,6 +27,7 @@ reachabilityPlot<- function(glacier, res){
   plot(1, type="n",xlim = c(1, length(res$order)), ylim = c(0, max(reachDist)),
        xlab = "Points", ylab = "Reachability Distance", main = paste(glacier,"Reachability Plot"))
 
+
   for (i in seq_along(res$order)) {
     idx = res$order[i]
     color <- col_list[kc[idx]]  # Color based on the cluster assignment
@@ -35,6 +36,25 @@ reachabilityPlot<- function(glacier, res){
   
   abline(h = res$eps_cl, col='red', lty='dashed')
 }
+
+# reachabilityPlot <- function(glacier, res, num_points) {
+#   reachDist = res$reachdist / num_points 
+#   reachDist[[1]] = 0
+
+#   kc = res$cluster
+#   kc = replaceZeros(kc)
+#   plot(1, type = "n", xlim = c(1, length(res$order)), ylim = c(0, max(reachDist)),
+#        xlab = "Points", ylab = "Average Reachability Distance", main = paste(glacier, "Reachability Plot"))
+
+#   for (i in seq_along(res$order)) {
+#     idx = res$order[i]
+#     color <- col_list[kc[idx]]  #
+#     segments(i, 0, i, reachDist[idx], col = color, lwd = 2)
+#   }
+
+#   abline(h = res$eps_cl / num_points, col = 'red', lty = 'dashed') 
+# }
+
 
 replaceZeros <- function(arr) {
   max_num <- max(arr)
@@ -49,7 +69,9 @@ replaceZeros <- function(arr) {
 }
 
 plot_clustered_paths <- function(glacier, dd1,tt,ss,all_path_list,kc, min_cost_indices){
+  print(kc)
   kc = replaceZeros(kc)
+  kc = generate_color_kc(kc)
   cols = colorRampPalette(c(muted("blue"), "grey", muted("red")))
   col_pal = cols(64)
 
@@ -71,7 +93,6 @@ plot_clustered_paths <- function(glacier, dd1,tt,ss,all_path_list,kc, min_cost_i
     } else {
       line_width = 1  # Normal line otherwise
     }
-
     lines(tt, all_path_list[[i]],  col = col_list[[kc[[i]]]], lwd = line_width)
   }
 

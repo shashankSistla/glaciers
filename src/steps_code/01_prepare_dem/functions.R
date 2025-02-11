@@ -20,7 +20,12 @@ download_files_from_s3 <- function(glacier, local_directory) {
   # Load necessary libraries
   library(aws.s3)
   library(pbapply)
-
+  bucket_name = "joined-time-series-gv"
+  s3_directory = glacier
+  # Set AWS credentials
+  Sys.setenv("AWS_ACCESS_KEY_ID" = "AKIAYN7X7W6XOWU75KVJ",
+             "AWS_SECRET_ACCESS_KEY" = "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",
+             "AWS_DEFAULT_REGION" = "us-west-1")
   
   # Ensure the directory path ends with a slash
   if (!grepl("/$", s3_directory)) {

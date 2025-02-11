@@ -8,8 +8,11 @@ main.function_07_fda <- function(key, root_dir){
     library(scales)
     library(fields)
     library(grDevices)
+    library(numDeriv) # For jacobian
     library(dplyr)
     library(zoo) # For rollapply
+    #library(base)
+    library(pracma)
     library(fda)
 
     # SOURCE
@@ -25,147 +28,218 @@ main.function_07_fda <- function(key, root_dir){
     step_03_output_dir = paste0(root_dir, "/output/", key, "/03_extract_IP/output/")
     step_04_output_dir = paste0(root_dir, "/output/", key, "/04_candidate_paths/output/")
     step_05_output_dir = paste0(root_dir, "/output/", key, "/05_clustering/output/")
+    step_06_output_dir = paste0(root_dir, "/output/", key, "/06_smoothing/output/")
 
-    output_dir = paste0(work_dir_path, "/output/",key,"/",step_name)
+    output_dir = paste0(work_dir_path, "output/",key,"/",step_name)
     create_directory(output_dir, "output")
     output_dir_path = paste0(output_dir, "/output")
+    create_directory(output_dir_path, "plots")
+    plots_dir = paste0(output_dir_path,"/", "plots")
+    env_data_dir = paste0(work_dir_path, "data/GEE/")
 
+    create_directory(output_dir_path, "plots")
+    plots_dir = paste0(output_dir_path,"/", "plots")
+
+    col_list = c('black','red','yellow','green', 'blue','pink','brown', 'purple', 'cyan', 'magenta', 'grey', 'darkgreen', 'darkblue', 'lightblue', 'magenta','magenta','magenta','magenta')
+
+
+    
+    glacier_count = 1
     for(glacier in glacier_list){
-        candidate_paths = readRDS(paste0(step_04_output_dir, glacier,"_candidate_paths.rds"))
-        tt = readRDS(paste0(step_03_output_dir,glacier, "_dates_cut.rds"))
-        al = readRDS(paste0(step_03_output_dir,glacier, "_al.rds"))
-        paths <- lapply(candidate_paths, function(indices) {
-            al[indices]
-        })
-        csv_filename = paste0(root_dir,"/data/GEE/",glacier,"_env.csv")
+        glacier_count = progress(glacier, glacier_count)
 
 
-        L = paths[[1]]
-        overall_mean_L <- mean(L, na.rm = TRUE)
-        L_centered <- L - overall_mean_L
+        tt = readRDS(paste0(step_03_output_dir, glacier, "_dates_cut.rds"))
+        ss = readRDS(paste0(step_03_output_dir, glacier, "_al.rds"))
+        #sSmooth = readRDS(paste0(step_06_output_dir,glacier,"_sSmooth.rds"))
+        candidate_paths = readRDS(paste0(step_04_output_dir,glacier,"_candidate_paths.rds"))
+        min_cost_indices = readRDS(paste0(step_05_output_dir,glacier,"_min_cost_indices.rds"))
+        knotbuffer = 1
+
+        smooth_paths = readRDS(paste0(step_06_output_dir,glacier,"_smoothened_paths.rds"))
         
-        env_data <- read.csv(csv_filename)
+        # Read environmental data
+       env_data <- read.csv(paste0(env_data_dir,glacier,"_env.csv"))
         env_data$Date <- as.Date(with(env_data, paste(Year, Month, "01", sep="-")), "%Y-%m-%d")
-
-        overall_mean_precipitation <- mean(env_data$Total_Precipitation, na.rm = TRUE)
 
         temp_above_273 <- env_data %>%
         filter(Temperature_2m > 273) %>%
         dplyr::select(Year, Month, Temperature_2m)
 
-
         overall_mean_summer_temperature <- temp_above_273 %>%
-            summarise(Mean = mean(Temperature_2m, na.rm = TRUE)) %>%
+        summarise(Mean = mean(Temperature_2m, na.rm = TRUE)) %>%
         pull(Mean)
+
+        overall_mean_precipitation <- mean(env_data$Total_Precipitation, na.rm = TRUE)
 
         env_data <- env_data %>%
         mutate(
             IsHighTempMonth = paste(Year, Month) %in% paste(temp_above_273$Year, temp_above_273$Month)
         )
 
+        # Use raw values of environmental data
         env_data <- env_data %>%
         mutate(
             PrecipitationDeparture = Total_Precipitation - overall_mean_precipitation,
             SummerTemperatureDeparture = ifelse(IsHighTempMonth, Temperature_2m - overall_mean_summer_temperature, NA)
         )
 
-        env_data_rolling <- env_data %>%
-        mutate(
-            SummerTempDepartureRolling5Yr = rollapply(SummerTemperatureDeparture, 5, mean, partial = TRUE, align = "right"),
-            PrecipDepartureRolling5Yr = rollapply(PrecipitationDeparture, 5, mean, partial = TRUE, align = "right")
-        )
-  
-        summer_data_rolling_adjusted <- summer_data_adjusted %>%
-        mutate(
-            SummerTempDepartureRolling5Yr = rollapply(SummerAvgTempDeparture, 5, mean, partial = TRUE, align = "right")
+        env_year <- env_data %>%
+        group_by(Year) %>%
+        summarise(
+            YearWiseTemperature = mean(SummerTemperatureDeparture, na.rm = TRUE),
+            YearWisePrecip = mean(PrecipitationDeparture, na.rm = TRUE)
         )
 
-        interpolate_summer_temp_rolling <- function(input_year) {
-            return(approx(x = summer_data_rolling_adjusted$Year, 
-                                    y = summer_data_rolling_adjusted$SummerTempDepartureRolling5Yr, 
-                                    xout = input_year, 
-                                    rule = 2)$y)
+        # Initialize variables to track y-limits
+        all_yearly_avg_L_deviated <- numeric()
+        all_fitted_values_lm <- numeric()
+
+        # Loop through all paths to find y-limits
+        for (path_index in 1:length(smooth_paths)) {
+        fit = smooth_paths[[path_index]]$fit
+        smooth = fit$smooth[[1]]
+        selected_candidate_paths = candidate_paths[min_cost_indices]
+        path = selected_candidate_paths[[path_index]]
+
+        # Process path data using GAM and FDA
+        res_path = gam_to_fda_with_se(fit, tt, range(tt))
+        coef_mat = res_path$coefficients_matrix
+        bspline_basis = res_path$bspline_basis
+
+        # Evaluate L and dL/dt at fine intervals
+        fine_t <- seq(from = min(tt), to = max(tt), by = 1/12)  # Monthly intervals
+        fine_L <- eval.basis(fine_t, bspline_basis) %*% coef_mat %*% fit$coefficients
+        fine_dL_dt <- (eval.basis(fine_t, bspline_basis, 1) %*% coef_mat) %*% fit$coefficients
+
+        # Calculate L_deviated
+        L_initial <- fine_L[1]
+        L_deviated <- fine_L - L_initial
+
+        # Create a numeric vector representing the year for each fine_t
+        fine_years <- floor(fine_t)
+
+        # Compute yearly averages for L_deviated and dL/dt using aggregate
+        yearly_avg_L_deviated <- aggregate(L_deviated, by = list(fine_years), mean)$V1
+        yearly_avg_dL_dt <- aggregate(fine_dL_dt, by = list(fine_years), mean)$V1
+
+        # Extract the standard errors from the GAM model
+        pred_gam <- predict(fit, se.fit = TRUE)
+        standard_errors_gam <- pred_gam$se.fit
+
+        # Extract years from the time points
+        years <- as.integer(format(tt))
+
+        # Aggregate the standard errors on a yearly basis
+        yearly_se_gam <- aggregate(standard_errors_gam, by = list(years), FUN = mean)$x
+        avg_years <- unique(years)
+
+        # Fit the regression model including the intercept term
+        regression_result <- lm(yearly_avg_dL_dt ~ L + P + T, data = data.frame(
+            L = yearly_avg_L_deviated,
+            P = env_year$YearWisePrecip,
+            T = env_year$YearWiseTemperature
+        ))
+
+        # Predict fitted values and standard errors
+        predictions <- predict(regression_result, se.fit = TRUE)
+        fitted_values_lm <- predictions$fit
+        standard_errors_lm <- predictions$se.fit
+
+        # Combine standard errors
+        combined_standard_errors <- sqrt(yearly_se_gam^2 + standard_errors_lm^2)
+
+        # Collect all values to find y-limits
+        all_yearly_avg_L_deviated <- c(all_yearly_avg_L_deviated, yearly_avg_L_deviated)
+        all_fitted_values_lm <- c(all_fitted_values_lm, fitted_values_lm)
         }
+
+        # Determine y-limits
+        y_min <- min(c(all_yearly_avg_L_deviated, all_fitted_values_lm))
+        y_max <- max(c(all_yearly_avg_L_deviated, all_fitted_values_lm))
+
+        plot_name_smoothened = paste0(plots_dir, "/",glacier,"_regression.png")
+        png(plot_name_smoothened)
+        # Initialize plot for all paths
+        plot(NULL, xlim = range(tt), ylim = c(y_min, y_max), type = "n", main = "Actual vs Fitted Path Values with SE for All Paths", xlab = "Year", ylab = "Path")
+
+        # Loop through all paths to plot
+        for (path_index in 1:length(smooth_paths)) {
+        fit = smooth_paths[[path_index]]$fit
+        smooth = fit$smooth[[1]]
+        selected_candidate_paths = candidate_paths[min_cost_indices]
+        path = selected_candidate_paths[[path_index]]
+
+        # Process path data using GAM and FDA
+        res_path = gam_to_fda_with_se(fit, tt, range(tt))
+        coef_mat = res_path$coefficients_matrix
+        bspline_basis = res_path$bspline_basis
+
+        # Evaluate L and dL/dt at fine intervals
+        fine_t <- seq(from = min(tt), to = max(tt), by = 1/12)  # Monthly intervals
+        fine_L <- eval.basis(fine_t, bspline_basis) %*% coef_mat %*% fit$coefficients
+        fine_dL_dt <- (eval.basis(fine_t, bspline_basis, 1) %*% coef_mat) %*% fit$coefficients
+
+        # Calculate L_deviated
+        L_initial <- fine_L[1]
+        L_deviated <- fine_L - L_initial
+
+        # Create a numeric vector representing the year for each fine_t
+        fine_years <- floor(fine_t)
+
+        # Compute yearly averages for L_deviated and dL/dt using aggregate
+        yearly_avg_L_deviated <- aggregate(L_deviated, by = list(fine_years), mean)$V1
+        yearly_avg_dL_dt <- aggregate(fine_dL_dt, by = list(fine_years), mean)$V1
+
+        # Extract the standard errors from the GAM model
+        pred_gam <- predict(fit, se.fit = TRUE)
+        standard_errors_gam <- pred_gam$se.fit
+
+        # Extract years from the time points
+        years <- as.integer(format(tt))
+
+        # Aggregate the standard errors on a yearly basis
+        yearly_se_gam <- aggregate(standard_errors_gam, by = list(years), FUN = mean)$x
+        avg_years <- unique(years)
+
+        # Fit the regression model including the intercept term
+        regression_result <- lm(yearly_avg_dL_dt ~ L + P + T, data = data.frame(
+            L = yearly_avg_L_deviated,
+            P = env_year$YearWisePrecip,
+            T = env_year$YearWiseTemperature
+        ))
+
+  # Predict fitted values and standard errors
+  predictions <- predict(regression_result, se.fit = TRUE)
+  fitted_values_lm <- predictions$fit
+  standard_errors_lm <- predictions$se.fit
+
+  # Combine standard errors
+  combined_standard_errors <- sqrt(yearly_se_gam^2 + standard_errors_lm^2)
+
+  # Plot actual vs fitted path values with combined standard errors
+  lines(avg_years, yearly_avg_L_deviated, col =  col_list[path_index], lty = 1)
+  lines(avg_years, fitted_values_lm, col = col_list[path_index], lty = 2)
+  #polygon(c(avg_years, rev(avg_years)), c(fitted_values_lm + combined_standard_errors, rev(fitted_values_lm - combined_standard_errors)), col = rgb(path_index / length(file), 0, 1 - path_index / length(file), 0.2), border = NA)
+
+  # Extract regression coefficients and compute additional coefficients
+  regression_coefficients <- coef(regression_result)
+  alpha <- round(regression_coefficients["P"], 2)
+  beta <- round(regression_coefficients["T"], 2)
+  gamma <- round(regression_coefficients["(Intercept)"], 2)
+  tau <- round(1 / regression_coefficients["L"], 2)
+
+  # Add text with alpha, beta, gamma, and tau values
+  # Add text with alpha, beta, gamma, and tau values at the bottom left
+  # Add text with alpha, beta, gamma, and tau values at the bottom left
+  text(x = min(tt), y = y_min + path_index * 0.1 * (y_max - y_min), labels = paste("Path", path_index, ": α=", alpha, ", β=", beta, ", γ=", gamma, ", τ=", tau), col = col_list[path_index], pos = 4)
   
-        interpolate_precip_rolling <- function(input_year) {
-            return(approx(x = annual_data_rolling_adjusted$Year, 
-                                        y = annual_data_rolling_adjusted$PrecipDepartureRolling5Yr, 
-                                        xout = input_year, 
-                                        rule = 2)$y)
-        }
+}
 
-          ode_system <- function(t, state, parameters) {
-            with(as.list(c(state, parameters)), {
-            T_val = interpolate_summer_temp_rolling(t)
-            P_val = interpolate_precip_rolling(t)
-            dL_dt <- alpha * T_val + beta * P_val + gamma - X / tau_param
-            return(list(dL_dt))
-            })
-        }
+# Add legend
+legend("topright", legend = paste("Path", 1:length(smooth_paths)), col = col_list[1:(length(smooth_paths))], lwd = 2)
 
-          par.names = c('alpha', 'beta', 'gamma', 'tau_param')
-  
-        # Spline basis for L, T, P
-        number_of_knots = 10
-        times = tt
-        breaks <- quantile(times, probs = seq(0, 1, length.out = number_of_knots + 2)) # +2 for the boundary knots
-        norder <- 4
-        nbasis <- norder + length(breaks) - 2
-        
-        b_spline_basis_L <- create.bspline.basis(range = range(times), nbasis = nbasis, norder = norder, breaks = breaks)
-        X_t = eval.basis(tt,b_spline_basis_L)
-        print("Hi there")
-        print(X_t)
-        print(dim(X_t))
-        print(typeof(X_t))
-        print(class(X_t))
-        
-        spline_fit = mgcv::gam(L_centered ~ -1 + X_t, fx = TRUE)
-        print("passed this")
-        fitted_values <- predict(spline_fit, newdata = data.frame(X_t))
-        print("did i pass this?")
-        plot(tt, L_centered, type = 'l', col = 'blue', xlab = 'Time', ylab = 'L Centered', main = 'Original L Centered vs. Spline Fit')
-        lines(tt, fitted_values, col = 'red')
-        legend("topright", legend=c("Original L Centered", "Spline Fit"), col=c("blue", "red"), lty=1)
-
-        par.initial <- c(alpha = 3.2, beta = -1, gamma = -4, tau_param = 20)
-        state.names <- c('L_val')
-        L_centered = as.numeric(L_centered
-                                )
-        result <- pcode(data = L_centered, time = times, ode.model = ode_system,
-                        par.names = par.names,
-                        par.initial = par.initial,
-                        state.names = state.names,
-                        basis.list = b_spline_basis_L, lambda = 1e2, controls = c(max_eval = 40))
-        
-        
-        mean_observed <- mean(L_centered)
-        
-        total_sum_squares <- sum((L_centered - mean_observed)^2)
-        
-        residual_sum_squares <- sum((L_centered - fitted_values)^2)
-        
-        R_squared <- 1 - (residual_sum_squares / total_sum_squares)
-        
-        params_estimated = result$structural.par
-        initial_state <- c(X = L_centered[1])
-        times = tt
-        sim_results <- ode(y = initial_state, times = times, func = ode_system, parms = params_estimated)
-        
-        plot_name = paste(glacier,'-',R_squared)
-        plot(tt, L_centered, type='l', col='blue', xlab='Time', ylab='L', main=plot_name)
-        lines(tt, sim_results[,2], col='red') # Overlay the modeled L
-        legend('topright', legend=c('Original L', 'Modeled L'), col=c('blue', 'red'), lty=1)
-        
-        # Calculate residuals
-        residuals <- L_centered - fitted_values
-        
-        # Plot the residuals
-        plot(tt, residuals, xlab = "Time", ylab = "Residuals", main = plot_name, pch = 20, col = 'blue')
-        print(glacier)
-        print(result$structural.par)
-
-
+dev.off()
 
     }
 }

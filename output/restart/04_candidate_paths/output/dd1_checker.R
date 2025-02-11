@@ -1,16 +1,23 @@
 library(scales)
 library(grDevices)
 library(fields)
-glacier = "G077333E32259N"
+glacier = "G007342E45528N"
 setwd("C:/Users/shash/OneDrive/Desktop/Research/Glacier Revamp/output/restart/03_extract_IP/output")
-ss = readRDS(paste0(glacier,"_al.rds"))
+al = readRDS(paste0(glacier,"_al.rds"))
 tt = readRDS(paste0(glacier,"_dates_cut.rds"))
 
+setwd("C:/Users/shash/OneDrive/Desktop/Research/Glacier Revamp/output/restart/02_GD_flowline/output")
 
-
+coord_parallel = readRDS(paste0(glacier,"_coord_parallel.rds"))
 
 
 setwd("C:/Users/shash/OneDrive/Desktop/Research/Glacier Revamp/output/restart/04_candidate_paths/output")
+term_paths = readRDS(paste0(glacier, "_candidate_paths.rds"))
+
+coord_parallel
+
+
+
 candidate_paths = readRDS(paste0(glacier,"_candidate_paths.rds"))
 path_costs = readRDS(paste0(glacier,"_path_costs.rds"))
 sSmooth = readRDS(paste0(glacier,"_sSmooth.rds"))
@@ -21,6 +28,38 @@ dd1 = sSmooth$dd1
 outs <- lapply(candidate_paths, function(indices) {
   ss[indices]
 })
+
+
+
+coord_parallel
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 cols = colorRampPalette(c(muted("blue"), "grey", muted("red")))

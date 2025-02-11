@@ -5,29 +5,6 @@ get_FV_joined_file <- function() {
     return(FV)
 }
 
-terminus <- function(glacier, obs, ss, tt, meas= NULL, plot = FALSE, direc = NULL, linefit = 1, invert = 1, distPerYear, knotbuffer = 1, n_paths = 10){
-  # tSmooth <- temporal_smooth_mat(obs, tt, knotT = min(round(length(tt)/4)+4, 35+4))$est
-
-
-  
-  term_path = pilot_path_algorithm(sSmooth$dd1,tt,ss,glacier,invert=invert,distPerYear, n_paths = n_paths)
-
-  # outs <- list()
-
-  # for(i in 1:(2*n_paths)){
-  #   outs[[paste0("out", i)]] <- temporal_smooth(ss, tt, est = sSmooth$est, dd3 = sSmooth$dd3, term_path = term_path[[i]], knotsT = round(diff(range(tt))/knotbuffer))
-  # }
-
-  # knotsT = round(length(tt)/4+2)
-
-  #Need to make sure the arclength now that it is in meters does not decrease because it is possible that flowline turns back slightly
-  
-  list = list(outs = outs, sSmooth = sSmooth)
-  return(term_path)
-  #return(list)
-  
-}
-
 
 temporal_smooth_mat <- function(obs, tt, knotT = min(round(length(tt)/4)+4, 35+4)){  # renaming to timeSeriesSplineSmooth
   est = matrix( NA, nrow = nrow(obs), ncol = ncol(obs))
@@ -94,7 +71,7 @@ spatial_smooth <- function(obs, ss, number_of_knots = min(round(length(ss)/4)+4,
   return (list(dd1 = t(dd1), dd2 = t(dd2), dd3=t(dd3), est = t(est)))
 }
 
-pilot_path_algorithm <- function(dd1, yearTab, distanceTab, glacier, invert, distPerYear, n_paths){
+pilot_path_algorithm <- function(dd1, yearTab, distanceTab, glacier, invert, dist_list, n_paths){
   #Offset is 2 for the landsat 5 images and 1 for all landsat 7 and 8 images
   #Landsat 7 starts in 2000
   #Offset the correction for the edge effect on the derivative matrices
@@ -104,35 +81,76 @@ pilot_path_algorithm <- function(dd1, yearTab, distanceTab, glacier, invert, dis
   #   offset = 1
   # }
 
-  offset = 1
+  offset = 2
   # The code inverts dd1 here. Therefore, all the costs calculated are reversed.
   if(invert){dd1 = -dd1}
 
-  term1 = terminus_est(dd1, yearTab, distanceTab,
-                       invert, distPerYear, flip = 0, offset, n.top = n_paths)
-  term2 = terminus_est(dd1, yearTab, distanceTab,
-                       invert, distPerYear, flip = 1, offset, n.top = n_paths)
+flip_list <- c(0, 1)
+
+  
+candidate_paths <- NULL
+
+# Loop for distPerYear
+for (distPerYear in dist_list) {
+  # Loop for flip
+  for (flip in flip_list) {
+    # Call terminus_est with current parameters
+    term <- terminus_est(dd1, yearTab, distanceTab, invert, distPerYear, flip = flip, offset, n.top = n_paths)
+    
+    # Combine columns for each result
+    if (is.null(candidate_paths)) {
+      candidate_paths <- term
+    } else {
+      candidate_paths <- cbind(candidate_paths, term)
+    }
+  }
+}
 
   path_costs_unordered <- numeric()
-  candidate_paths = cbind(term1,term2)
-  for(i in 1:(2*n_paths)){
-    if(i %in% c(1:n_paths)){
-      path_costs_unordered[i] = pathCost(dd1, candidate_paths[,i], flip = 0)
-    }else{
-      path_costs_unordered[i] = pathCost(dd1, candidate_paths[,i], flip = 1)
+
+for (j in 1:length(dist_list)) {
+  # Index to access the correct set of columns for each distPerYear
+  # Each set is 2 * n_paths wide
+  start_index <- (j - 1) * (2 * n_paths) + 1
+  end_index <- j * 2 * n_paths
+  
+  # Slice out the current subset of columns from all_candidate_paths
+  current_subset <- candidate_paths[, start_index:end_index]
+  
+  # Calculate path costs for the current subset
+  for (i in 1:(2 * n_paths)) {
+    if (i <= n_paths) {
+      # First n_paths columns, flip = 0
+      path_costs_unordered[(j-1) * 2 * n_paths + i] <- pathCost(dd1, current_subset[, i], flip = 0)
+    } else {
+      # Second n_paths columns, flip = 1
+      path_costs_unordered[(j-1) * 2 * n_paths + i] <- pathCost(dd1, current_subset[, i], flip = 1)
     }
-   
-  } 
- print(candidate_paths[,1])
- print(candidate_paths[,11]) 
+  }
+}
+
 index = sort(path_costs_unordered, index.return = TRUE, decreasing = TRUE)$ix
-candidate_paths[, (n_paths+1):(2*n_paths)] <- flipud(candidate_paths[, (n_paths+1):(2*n_paths)])
+
+
+for (j in 1:length(dist_list)) {
+    # Calculate start and end indices for each distPerYear
+    start_index_unflipped <- (j - 1) * (2 * n_paths) + 1
+    end_index_unflipped <- start_index_unflipped + n_paths - 1
+    
+    start_index_flipped <- end_index_unflipped + 1
+    end_index_flipped <- start_index_flipped + n_paths - 1
+    
+    # Apply flipud to the flipped sections
+    # Assuming flipud function or similar logic is applied correctly to each selected range
+    candidate_paths[, start_index_flipped:end_index_flipped] <- apply(candidate_paths[, start_index_flipped:end_index_flipped], 2, rev)
+}
 
 
 
 
 # Compact return statement using lapply
-term_paths <- lapply(1:(2*n_paths), function(i) candidate_paths[, i])
+total_columns <- length(dist_list) * 2 * n_paths
+term_paths <- lapply(1:total_columns, function(i) candidate_paths[, i])
 
 
 return(list(term_paths = term_paths, path_costs = path_costs_unordered))
@@ -277,7 +295,7 @@ temporal_smooth <- function(ss,tt, est,dd3,term_path, knotsT =-1){
 }
 
 
-plot_candidate_paths <- function(glacier, ss, tt, outs, dd1, n_paths, path_costs, plot_path){
+plot_candidate_paths <- function(glacier, ss, tt, outs, dist_list, dd1, n_paths, path_costs, plot_path){
   png(plot_path)
 
   cols = colorRampPalette(c(muted("blue"), "grey", muted("red")))
@@ -288,19 +306,22 @@ plot_candidate_paths <- function(glacier, ss, tt, outs, dd1, n_paths, path_costs
   dd1[which(dd1 < -dmax)] = -dmax
   image.plot( tt,ss, dd1, zlim = c(-dmax, dmax), ylab = "Flowline arclength (meters)", xlab = "Year",col = col_pal, main=paste(glacier, "Candidate Paths"))
 
-  min_cost_index_1 = which.max(path_costs[1:n_paths])
-  min_cost_index_2 = which.max(path_costs[(n_paths + 1):(2*n_paths)]) + n_paths
+  total_paths = n_paths * 2 * length(dist_list)
+  flip0_indices = rep(seq(1, total_paths, by = 2 * n_paths), each = n_paths) + rep(0:(n_paths - 1), times = length(dist_list))
+  flip1_indices = rep(seq(n_paths + 1, total_paths, by = 2 * n_paths), each = n_paths) + rep(0:(n_paths - 1), times = length(dist_list))
+  min_cost_index_1 = which.max(path_costs[flip0_indices]) 
+  min_cost_index_2 = which.max(path_costs[flip1_indices])
 
   lines(tt, outs[[min_cost_index_1]], lwd = 3.5, col = "green")
   lines(tt, outs[[min_cost_index_2]], lwd = 3.5, col = "yellow")
 
   # Plot the other paths
-  for(i in 1:n_paths){
+  for(i in flip0_indices){
     if (i != min_cost_index_1) {
       lines(tt, outs[[i]], lwd = 1.5, col = "green")
     }
   }
-  for(i in (n_paths+1):(2*n_paths)){
+  for(i in flip1_indices){
     if (i != min_cost_index_2) {
       lines(tt, outs[[i]], lwd = 1.5, col = "yellow")
     }

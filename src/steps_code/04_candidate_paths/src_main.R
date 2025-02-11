@@ -32,11 +32,11 @@ main.function_04_candidate_paths <- function(key, root_dir){
     create_directory(output_dir, "output")
 
     # LOAD NECESSARY FILES AND PARAMS
-    distPerYear = params$step_4$distPerYear
+    #distPerYear = params$step_4$distPerYear
     n_paths = params$step_4$n_paths
 
     FV = get_FV_joined_file()
-
+    dist_list <- seq(50, 200, by = 50)
     glacier_count = 1
     for(glacier in glacier_list){
         
@@ -62,7 +62,7 @@ main.function_04_candidate_paths <- function(key, root_dir){
         #Smoothen the spatial components
         sSmooth = spatial_smooth(tSmooth, al, number_of_knots = min(round(length(al)/4)+4, 35+4))
 
-        pilot_path_output = pilot_path_algorithm(sSmooth$dd1,dates_cut,al,glacier,invert=1 ,distPerYear = distPerYear, n_paths = n_paths)
+        pilot_path_output = pilot_path_algorithm(sSmooth$dd1,dates_cut,al,glacier,invert=1 ,dist_list = dist_list, n_paths = n_paths)
         term_paths = pilot_path_output$term_paths
         path_costs = pilot_path_output$path_costs
 
@@ -81,7 +81,7 @@ main.function_04_candidate_paths <- function(key, root_dir){
         })
 
 
-        plot_candidate_paths(glacier, al, dates_cut, values_list, sSmooth$dd1, n_paths, path_costs, plot_path)
+        plot_candidate_paths(glacier, al, dates_cut, values_list, dist_list, sSmooth$dd1, n_paths, path_costs, plot_path)
     }
 
     

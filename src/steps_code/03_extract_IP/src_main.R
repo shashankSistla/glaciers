@@ -193,6 +193,12 @@ main.function_03_extract_IP <- function(key, root_dir){
       al_filename = paste0(output_dir_path, "/output/", glacier,"_al.rds")
       saveRDS(al, file = al_filename)
 
+      outlier_indices_filename = paste0(output_dir_path, "/output/", glacier, "_outlier.rds")
+      saveRDS(outliers, file = outlier_indices_filename)
+
+      indices_to_remove_filename = paste0(output_dir_path,"/output/", glacier, "_indices_to_remove.rds")
+      saveRDS(indices_to_remove, file = indices_to_remove_filename)
+
       # the code here reads config and deletes the old landsat data
       # if(delete_landsat_data_after_processing){
       #   unlink(glacier_landsat_images_dir, recursive = TRUE)

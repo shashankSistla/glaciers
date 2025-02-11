@@ -87,7 +87,7 @@
 #'                      basis.list = basis, lambda = 1e2)
 #'}
 #' @export
-pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun = NULL, par.initial, basis.list, lambda, controls = list()) {
+pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun = NULL, par.initial, basis.list, lambda, controls = list(), gam_coefs = NULL) {
   # Set up default controls for optimizations and quadrature evaluation
   con.default <- list(nquadpts = 101, smooth.lambda = 100, tau = 0.01, tolx = 1e-06, tolg = 1e-06, maxeval = 20,verbal = 0)
   # Replace default with user's input
@@ -95,9 +95,11 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
   con.now <- con.default
   
   if (length(state.names) == 1) {
+    print("I enter the correct if")
     if (!is.function(likelihood.fun)) {
+      print("I enter the correct if in the if")
       result <- pcode_1d(data = data, time = time, ode.model = ode.model, par.initial = par.initial, par.names = par.names,
-                         basis = basis.list, lambda = lambda, controls = con.now)
+                         basis = basis.list, lambda = lambda, controls = con.now, gam_coefs = NULL)
       return(list(structural.par = result$structural.par, nuisance.par = result$nuisance.par))
     } else {
       result <- pcode_lkh_1d(data = data, time = time, likelihood.fun = likelihood.fun, ode.model = ode.model,
@@ -185,30 +187,26 @@ pcode <- function(data, time, ode.model, par.names, state.names, likelihood.fun 
 #' @return   \item{quadts}{Quadrature points.}
 #' @return   \item{quadwts}{Quadrature weights.}
 #'
-prepare_basis <- function(basis, times, nquadpts) {
-  
+prepare_basis <- function(basis, times, nquadpts, gam_coefs = NULL) {
   # Evaluate basis functions over observation time points
-  Phi.mat  <- eval.basis(times, basis)
+  Phi.mat <- eval.basis(times, basis)
+
+  # Preparation to calculate L2 penalty
+  quadts <- seq(min(times), max(times), length.out = nquadpts)
+  Qmat <- eval.basis(quadts, basis)
+  Q.D1mat <- eval.basis(quadts, basis, 1)
+  Q.D2mat <- eval.basis(quadts, basis, 2)
   
-  # Preparation to calculate L2 penalty Evaluate basis function over quadrature points, and the number of quadrature
-  # points, 'nquadpts', defined the density of points.
-  quadts   <- seq(min(times), max(times), length.out = nquadpts)
-  nquad    <- length(quadts)
-  quadwts  <- rep(1, nquad)
-  even.ind <- seq(2, (nquad - 1), by = 2)
-  odd.ind  <- seq(3, (nquad - 2), by = 2)
-  quadwts[even.ind] = 4
-  quadwts[odd.ind] = 2
-  h        <- quadts[2] - quadts[1]
-  quadwts  <- quadwts * (h/3)
-  
-  Qmat     <- eval.basis(quadts, basis)
-  Q.D1mat  <- eval.basis(quadts, basis, 1)
-  Q.D2mat  <- eval.basis(quadts, basis, 2)
+  if (!is.null(gam_coefs)) {
+    Phi.mat <- Phi.mat %*% gam_coefs
+    Qmat <- Qmat %*% gam_coefs
+    Q.D1mat <- Q.D1mat %*% gam_coefs
+    Q.D2mat <- Q.D2mat %*% gam_coefs
+  }
   
   return(list(Phi.mat = Phi.mat, Qmat = Qmat, Q.D1mat = Q.D1mat, Q.D2mat = Q.D2mat, quadts = quadts, quadwts = quadwts))
-  
 }
+
 
 #' @title Inner objective function (multiple dimension version)
 #' @description An objective function combines the sum of squared error of basis expansion estimates and the penalty controls how those estimates fail to satisfies the ODE model
@@ -441,19 +439,19 @@ outterobj <- function(ode.parameter, basis.initial, derivative.model, inner.inpu
 #'
 #' @return   \item{structural.par}{The structural parameters of the ODE model.}
 #' @return    \item{nuisance.par}{The nuisance parameters or the basis coefficients for interpolating observations.}
-pcode_1d <- function(data, time, ode.model, par.initial, par.names, basis, lambda, controls = list()) {
+pcode_1d <- function(data, time, ode.model, par.initial, par.names, basis, lambda, controls = list(), gam_coefs = NULL) {
   
   # number of parameters
   npar <- length(par.initial)
   
   nbasis <- basis$nbasis
-  
+  print("Begin evaluating matrices")
   # Evaluating basis functions at time points of observations and stored as columns in Phi matrix
   Phi.mat <- eval.basis(time, basis)
-  # Evaluating 1st derivative of basis functions
+  # Evaluating 1st derivative of basis functions - LINES CAN BE DELETED - SHASHANK
   D1.mat <- eval.basis(time, basis, 1)
   # Evaluating 2nd derivative of basis functions
-  D2.mat <- eval.basis(time, basis, 2)
+  D2.mat <- eval.basis(time, basis, 2)             # END LINES CAN BE DELETED
   
   # Calculate L2 penalty
   quadts <- seq(min(time), max(time), length.out = controls$nquadpts)
@@ -470,6 +468,13 @@ pcode_1d <- function(data, time, ode.model, par.initial, par.names, basis, lambd
   Q.D1mat <- eval.basis(quadts, basis, 1)
   Q.D2mat <- eval.basis(quadts, basis, 2)
   
+  if (!is.null(gam_coefs)) {
+    Phi.mat <- Phi.mat %*% gam_coefs
+    Qmat <- Qmat %*% gam_coefs
+    Q.D1mat <- Q.D1mat %*% gam_coefs
+    Q.D2mat <- Q.D2mat %*% gam_coefs
+  }
+  print("Finish evaluating matrices")
   # Initial estimat of basis coefficients
   Rmat = t(Q.D2mat) %*% (Q.D2mat * (quadwts %*% t(rep(1, nbasis))))
   basismat2 = t(Phi.mat) %*% Phi.mat
@@ -480,16 +485,18 @@ pcode_1d <- function(data, time, ode.model, par.initial, par.names, basis, lambd
   # Passing to inner objective functions and obtain initial value for parameter cascading
   inner.input = list(data, Phi.mat, lambda, Qmat, Q.D1mat, quadts, quadwts)
 
-  
+  print("Ready to optimize")
   
   # Using nonlinear least square for optimization temp <- nls_optimize(innerobj, initial_coef, ode.par = par.initial,
   # derive.model = ode.model, input = inner.input,NLS = TRUE) new.ini.basiscoef <-
   # matrix(temp$par,length(temp$par),1)
   #--------------------------------------------------------
   names(par.initial) <- par.names
+  print("Optimizing theta")
   theta.final <- nls_optimize(outterobj, par.initial, basis.initial = initial_coef, derivative.model = ode.model,
                               inner.input = inner.input, NLS = TRUE, verbal = controls$verbal)$par
   
+  print("Optimizing basis coef")
   basiscoef <- nls_optimize.inner(innerobj, initial_coef, ode.par = theta.final, derive.model = ode.model, input = inner.input,
                                   NLS = TRUE)$par
   
@@ -507,7 +514,7 @@ pcode_1d <- function(data, time, ode.model, par.initial, par.names, basis, lambd
 #'
 #' @return   \item{par}{The solution to the non-linear least square problem, the same size as \code{x0}}
 
-nls_optimize <- function(fun, x0, ..., options = list(), verbal = 0) {
+nls_optimize <- function(fun, x0, ..., options = list(), verbal = 1) {
   stopifnot(is.numeric(x0))
   opts <- list(tau = 0.001, tolx = 1e-06, tolg = 1e-06, maxeval = 20)
   namedOpts <- match.arg(names(options), choices = names(opts), several.ok = TRUE)

@@ -1,0 +1,10 @@
+glacier_list <- c('G007930E46472N','G007880E45990N','G007887E45948N','G008203E46301N','G077749E41787N')
+glacier_list <- c('G008297E46408N','G007880E45990N')
+glacier_list <- c('G007880E45990N')
+
+
+glacier_list <- c('G007009E45873N')
+glacier_list <- c('G007342E45528N','G007880E45990N')
+glacier_list <- c('G077314E43095N','G072559E37965N')
+glacier_list <- c('G007880E45990N')
+glacier_list <- c('G007702E46120N')
